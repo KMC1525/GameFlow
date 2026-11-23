@@ -417,8 +417,8 @@ mod tests {
         }
         let r = rt(|s| {
             s.agents.sound.runtime = RuntimeKind::Command;
-            // usa `cp` para simular um gerador: copia /etc/hostname → {out}
-            s.agents.sound.command = "cp /etc/hostname {out}".into();
+            // simula um gerador: escreve algo em {out} (funciona em Linux e macOS)
+            s.agents.sound.command = r#"sh -c "echo gerado > {out}""#.into();
         });
         let out = std::env::temp_dir().join(format!("gf-snd-{}.wav", uuid::Uuid::new_v4()));
         assert!(r.generate_sound("beep {x}", "sfx", &out).await.unwrap());
