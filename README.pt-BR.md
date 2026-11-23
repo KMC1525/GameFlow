@@ -6,6 +6,8 @@
 
 Rust no backend · HTML, CSS e JS na interface e nos jogos gerados · Windows, macOS e Linux
 
+[English](README.md) · **Português (Brasil)**
+
 ![GameFlow rodando um RPG gerado pelos agentes](docs/screenshots/ide-jogo.png)
 
 </div>
@@ -64,7 +66,8 @@ gameflow update --check  # só verifica se há versão nova
 | Comando | O que faz |
 |---|---|
 | `gameflow` / `gameflow start [--port N] [--no-open]` | Inicia a IDE |
-| `gameflow generate "descrição" [--name X] [--genre G] [--attach arquivo]` | Gera um jogo pelo terminal, sem abrir a interface |
+| `gameflow generate "descrição" [--name X] [--genre G] [--preset P] [--attach arquivo]` | Gera um jogo pelo terminal, sem abrir a interface |
+| `gameflow preset list \| import ARQ \| export ID [--out ARQ] \| delete ID` | Gerencia [estilos visuais](#estilos-visuais-presets) |
 | `gameflow doctor` | Mostra pastas, runtimes de IA encontrados e agentes configurados |
 | `gameflow paths` | Mostra onde ficam projetos, modelos e configurações |
 
@@ -72,7 +75,7 @@ gameflow update --check  # só verifica se há versão nova
 
 | Variável | Para que serve |
 |---|---|
-| `GAMEFLOW_HOME` | Guarda **tudo** (projetos, modelos, configurações) numa pasta só — útil para instalações portáteis |
+| `GAMEFLOW_HOME` | Guarda **tudo** (projetos, modelos, estilos, configurações) numa pasta só — útil para instalações portáteis |
 | `GAMEFLOW_HF_ENDPOINT` | Usa outro endereço no lugar de `https://huggingface.co` (espelhos/proxy) |
 
 ## Primeiros passos
@@ -92,6 +95,20 @@ Arraste ou anexe imagens/sons na barra de prompt. Cada anexo pode ser:
 - **usar no jogo** — o arquivo entra no jogo como está. O GameFlow casa pelo nome (`heroi.png` → jogador, `chefe.png` → chefe, `musica.wav` → trilha, `fundo.png` → cenário…). Seus arquivos **nunca** são sobrescritos pelos agentes.
 
 Também dá para combinar os dois: texto + anexos.
+
+## Estilos visuais (presets)
+
+Um **estilo** é um "visual" reutilizável: paleta de 8 cores, descrição do estilo de arte e dicas para a IA de imagem. Use para dar a vários jogos a mesma identidade visual, compartilhar um visual com outras pessoas ou guardar seus estilos favoritos.
+
+- **Escolha um** no seletor `Estilo:` da barra de prompt para a próxima geração, ou **aplique a um projeto existente** — paleta, `style.css` e toda a arte gerada são refeitas (seus próprios arquivos não são tocados).
+- **Exporte** qualquer estilo para um arquivo portátil `.gfstyle.json`; **importe** arquivos de outras pessoas ou computadores (arraste para Configurações → *Estilos de arte* ou para a barra de prompt).
+- **Salve o estilo de um projeto** na sua biblioteca para reutilizar em outros jogos.
+- Cinco estilos vêm com o GameFlow: *Neon Noir*, *Pastel Aconchegante*, *Verde Portátil*, *Aquarela de Livro Infantil* e *Crepúsculo de Brasa*.
+- Pelo terminal: `gameflow preset export neon-noir`, `gameflow preset import visual.gfstyle.json`, `gameflow generate "…" --preset neon-noir`.
+
+Arquivos importados são validados (formato, versão, tamanho, cores `#rrggbb`) e sempre salvos com um id novo, então nunca sobrescrevem um estilo embutido. O formato está documentado (em inglês) em [`docs/STYLE_PRESETS.md`](docs/STYLE_PRESETS.md).
+
+![Biblioteca de estilos](docs/screenshots/estilos.png)
 
 ## Tipos de jogo
 
@@ -126,7 +143,7 @@ O gênero é detectado pelo seu texto (ou escolhido no seletor). Os mapas/fases 
 
 | Agente | Tarefa | O que faz |
 |---|---|---|
-| Diretor | texto | Transforma o pedido (e as cores das referências) no design do jogo |
+| Diretor | texto | Transforma o pedido (e as cores das referências ou do estilo escolhido) no design do jogo |
 | Roteirista | texto | Falas, missão, personagens e roteiros de Visual Novel |
 | Arquiteto | código | Escolhe recursos do template e gera mapas/fases |
 | Artista | imagem | Sprites, tiles, fundos, texturas e retratos (usa seus arquivos quando marcados) |
@@ -148,7 +165,7 @@ Em **⚙ Configurações → Agentes** você escolhe o modelo de cada tarefa; em
 | Imagem | **stable-diffusion.cpp**, servidor compatível (`/images/generations`) ou comando próprio |
 | Som | Comando próprio (**Piper** para voz, scripts…) ou o sintetizador embutido |
 
-O GameFlow inicia e gerencia o `llama-server` sozinho. Guia passo a passo em [`docs/MODELOS.md`](docs/MODELOS.md).
+O GameFlow inicia e gerencia o `llama-server` sozinho. Guia passo a passo em [`docs/MODELOS.md`](docs/MODELOS.md) ([English](docs/MODELS.md)).
 
 ![Configurações dos agentes](docs/screenshots/configuracoes-agentes.png)
 
@@ -187,6 +204,7 @@ GF.on('event', (nome, dados) => { if (nome === 'coin') GF.toast('Boa!'); });
 - Tudo roda **localmente**: o servidor escuta só em `127.0.0.1`; nenhum dado seu sai do computador (exceto buscas/downloads no Hugging Face, quando você pede).
 - Proteção contra **DNS rebinding** e **CSRF** (valida `Host` e `Origin`), para que sites abertos no seu navegador não consigam chamar a API local.
 - Os jogos (potencialmente escritos por IA) rodam num **servidor de origem separada**, dentro de `iframe` com `sandbox`, e com **CSP que bloqueia conexões externas**.
+- Estilos importados têm tamanho limitado e validação rigorosa; são só dados e nunca são executados.
 - Caminhos de arquivo são validados (sem `..`, sem links simbólicos que escapem do projeto) e a IA só pode escrever em `js/*.js`, `style.css`, `index.html` e `game.json`.
 
 ## Desenvolvimento
@@ -194,7 +212,7 @@ GF.on('event', (nome, dados) => { if (nome === 'coin') GF.toast('Boa!'); });
 ```bash
 git clone https://github.com/KMC1525/GameFlow && cd GameFlow
 cargo run                       # abre a IDE (em debug, lê frontend/ e templates/ do disco)
-cargo test                      # 44+ testes: geradores, agentes, grafo, projetos, atualização, segurança
+cargo test                      # 50+ testes: geradores, agentes, grafo, projetos, estilos, atualização, segurança
 cargo clippy --all-targets -- -D warnings
 npm i playwright && npx playwright install chromium
 node scripts/smoke-games.js     # gera e "joga" os 8 gêneros no Chromium, falha com qualquer erro de JS
@@ -202,11 +220,12 @@ node scripts/smoke-games.js     # gera e "joga" os 8 gêneros no Chromium, falha
 
 ```
 src/
-├── main.rs            CLI (start, update, doctor, generate, paths)
+├── main.rs            CLI (start, update, doctor, generate, preset, paths)
 ├── server.rs          API REST + SSE, guarda de Host/Origin, servidor de jogos isolado
 ├── agents/            orquestrador, grafo não linear (graph.rs), papéis (roles.rs), prompts (llm.rs), checagens
 ├── runtime.rs         llama.cpp gerenciado, OpenAI-compat, stable-diffusion.cpp, comandos
 ├── hf.rs              busca/arquivos/downloads do Hugging Face
+├── presets.rs         estilos visuais: formato, validação, biblioteca, embutidos
 ├── spec.rs            "contrato" do jogo (game.json), gêneros, temas, heurística de prompt
 ├── levelgen.rs        mapas e fases procedurais · story.rs roteiros ramificados
 ├── procedural.rs      arte pixel-art (PNG) e áudio chiptune (WAV) procedurais, paleta por imagem
@@ -215,13 +234,14 @@ frontend/              interface (HTML/CSS/JS, módulos ES, sem build)
 templates/             jogos-base de cada gênero (HTML/CSS/JS)
 ```
 
-Para publicar uma versão: `git tag v0.1.0 && git push origin v0.1.0` — o workflow `release.yml` compila para Linux (x86_64/arm64), macOS (Intel/Apple Silicon) e Windows, gera `.tar.gz`/`.zip` com `.sha256` e publica; é isso que `install.sh`, `install.ps1` e `gameflow update` consomem.
+Para publicar uma versão: `git tag v0.2.0 && git push origin v0.2.0` — o workflow `release.yml` compila para Linux (x86_64/arm64), macOS (Intel/Apple Silicon) e Windows, gera `.tar.gz`/`.zip` com `.sha256` e publica; é isso que `install.sh`, `install.ps1` e `gameflow update` consomem. Veja o [changelog](CHANGELOG.md).
 
 ## Status e limitações honestas
 
 - Os geradores embutidos, os 8 templates, a interface, o pipeline de agentes (incluindo retrabalho e pedidos de assets) e a segurança têm testes automatizados e foram jogados no Chromium.
 - Os caminhos com **modelos reais** (llama.cpp, stable-diffusion.cpp, Piper, Hugging Face) foram validados contra **servidores simulados com a mesma API** (o ambiente de desenvolvimento não tinha GPU nem acesso ao Hub). Se algo se comportar diferente com um modelo real, abra uma issue com a saída de `gameflow doctor`.
 - A qualidade do que a IA escreve depende do modelo. Modelos pequenos (≤3B) ajudam mais em texto e pequenos ajustes de código; para mecânicas elaboradas prefira modelos de código de 7B+.
+- A arte procedural (sem modelo de imagem) é sempre pixel-art colorida com a paleta do estilo; um estilo que não seja pixel art muda principalmente como o jogo escala os sprites e o que o modelo de imagem é instruído a desenhar.
 - Os jogos 3D usam um renderizador por software no Canvas 2D (leve e sem dependências), não WebGL — o visual é propositalmente simples.
 
 ## Licença
