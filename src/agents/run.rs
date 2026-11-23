@@ -113,5 +113,7 @@ pub struct GenerateRequest {
     pub genre: Option<String>,
     /// "create" (padrão no primeiro prompt) ou "modify"
     pub mode: Option<String>,
+    /// Style preset id from the library (see `presets.rs`).
+    pub preset: Option<String>,
     pub attachments: Vec<AttachmentReq>,
 }

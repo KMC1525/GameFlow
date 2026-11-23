@@ -4,6 +4,7 @@ mod agents;
 mod config;
 mod hf;
 mod levelgen;
+mod presets;
 mod procedural;
 mod projects;
 mod runtime;
@@ -58,9 +59,34 @@ enum Cmd {
         /// Imagens/sons de referência (use `usar:caminho` para incluir no jogo)
         #[arg(long)]
         attach: Vec<String>,
+        /// Estilo visual da biblioteca (veja `gameflow preset list`)
+        #[arg(long)]
+        preset: Option<String>,
+    },
+    /// Gerencia presets de estilo visual (importar, exportar, listar)
+    Preset {
+        #[command(subcommand)]
+        action: PresetCmd,
     },
     /// Mostra as pastas usadas pelo GameFlow
     Paths,
+}
+
+#[derive(Subcommand)]
+enum PresetCmd {
+    /// Lista os presets (embutidos e importados)
+    List,
+    /// Importa um arquivo .gfstyle.json para a biblioteca
+    Import { file: PathBuf },
+    /// Exporta um preset para um arquivo .gfstyle.json
+    Export {
+        id: String,
+        /// Arquivo de saída (padrão: ./<id>.gfstyle.json)
+        #[arg(long)]
+        out: Option<PathBuf>,
+    },
+    /// Remove um preset importado
+    Delete { id: String },
 }
 
 #[tokio::main]
@@ -71,7 +97,8 @@ async fn main() {
         Cmd::Start { port, no_open } => start(port, !no_open).await,
         Cmd::Update { check } => update::run(check).await,
         Cmd::Doctor => doctor().await,
-        Cmd::Generate { prompt, name, genre, attach } => generate(prompt, name, genre, attach).await,
+        Cmd::Generate { prompt, name, genre, attach, preset } => generate(prompt, name, genre, attach, preset).await,
+        Cmd::Preset { action } => preset_cmd(action),
         Cmd::Paths => {
             let p = config::Paths::discover();
             println!("dados e modelos : {}\nprojetos        : {}\nconfigurações   : {}", p.root.display(), p.projects.display(), p.settings_file.display());
@@ -112,7 +139,7 @@ async fn doctor() -> anyhow::Result<()> {
     Ok(())
 }
 
-async fn generate(prompt: String, name: Option<String>, genre: Option<String>, attach: Vec<String>) -> anyhow::Result<()> {
+async fn generate(prompt: String, name: Option<String>, genre: Option<String>, attach: Vec<String>, preset: Option<String>) -> anyhow::Result<()> {
     let st = server::build_state(config::Paths::discover())?;
     let genre_enum = genre.as_deref().and_then(spec::Genre::from_id);
     if genre.is_some() && genre_enum.is_none() {
@@ -132,7 +159,7 @@ async fn generate(prompt: String, name: Option<String>, genre: Option<String>, a
         st.projects.write(&meta.id, &rel, &std::fs::read(&src)?)?;
         atts.push(agents::run::AttachmentReq { path: rel, mode: mode.into() });
     }
-    let run = st.orch.start(&meta.id, GenerateRequest { prompt, genre, mode: None, attachments: atts })?;
+    let run = st.orch.start(&meta.id, GenerateRequest { prompt, genre, mode: None, preset, attachments: atts })?;
     let mut next = 0;
     loop {
         for env in run.snapshot(next) {
@@ -155,4 +182,31 @@ async fn generate(prompt: String, name: Option<String>, genre: Option<String>, a
         }
         tokio::time::sleep(Duration::from_millis(150)).await;
     }
+}
+
+fn preset_cmd(action: PresetCmd) -> anyhow::Result<()> {
+    let lib = presets::Presets::new(config::Paths::discover().presets);
+    match action {
+        PresetCmd::List => {
+            for p in lib.list() {
+                println!("{:<24} {}{}  —  {}", p.id, p.name, if p.builtin { " (embutido)" } else { "" }, p.art_style);
+            }
+        }
+        PresetCmd::Import { file } => {
+            let text = std::fs::read_to_string(&file).map_err(|e| anyhow::anyhow!("não consegui ler {}: {e}", file.display()))?;
+            let p = lib.import_text(&text)?;
+            println!("Importado: {} (id: {})", p.name, p.id);
+        }
+        PresetCmd::Export { id, out } => {
+            let p = lib.get(&id).ok_or_else(|| anyhow::anyhow!("preset \"{id}\" não encontrado (veja `gameflow preset list`)"))?;
+            let out = out.unwrap_or_else(|| PathBuf::from(format!("{}{}", p.id, presets::FILE_SUFFIX)));
+            std::fs::write(&out, p.to_file_json())?;
+            println!("Exportado para {}", out.display());
+        }
+        PresetCmd::Delete { id } => {
+            lib.delete(&id)?;
+            println!("Removido: {id}");
+        }
+    }
+    Ok(())
 }

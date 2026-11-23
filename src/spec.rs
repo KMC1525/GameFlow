@@ -211,6 +211,17 @@ pub struct SoundReq {
     pub prompt: String,
 }
 
+/// Visual style applied to the game (from a style preset or the director). Used by the artist for image prompts.
+#[derive(Clone, Debug, Serialize, Deserialize, Default)]
+#[serde(default)]
+pub struct StyleRef {
+    /// Library id of the preset this style came from (empty when custom).
+    pub preset: String,
+    pub name: String,
+    pub prompt_suffix: String,
+    pub negative_prompt: String,
+}
+
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(default)]
 pub struct GameSpec {
@@ -221,6 +232,7 @@ pub struct GameSpec {
     pub theme: String,
     pub setting: String,
     pub art_style: String,
+    pub style: StyleRef,
     pub seed: u64,
     pub difficulty: String,
     pub prompt: String,
@@ -252,6 +264,7 @@ impl Default for GameSpec {
             theme: "fantasia".into(),
             setting: String::new(),
             art_style: "pixel art".into(),
+            style: StyleRef::default(),
             seed: 1,
             difficulty: "normal".into(),
             prompt: String::new(),
@@ -544,6 +557,7 @@ pub fn heuristic_spec(prompt: &str, genre_hint: Option<Genre>, palette_override:
         theme: theme.id.into(),
         setting: tr(lang, theme.setting).to_string(),
         art_style: theme.art.into(),
+        style: StyleRef::default(),
         seed,
         difficulty: difficulty.into(),
         prompt: prompt.to_string(),
@@ -845,7 +859,7 @@ pub fn merge_patch(spec: &GameSpec, patch: &Value) -> GameSpec {
     let mut patch = patch.clone();
     // A IA não deve alterar seed/prompt/genre nem os mundos gerados
     if let Some(o) = patch.as_object_mut() {
-        for k in ["seed", "prompt", "world", "ui"] {
+        for k in ["seed", "prompt", "world", "ui", "style"] {
             o.remove(k);
         }
         // Só aceita gênero conhecido
@@ -868,6 +882,7 @@ pub fn merge_patch(spec: &GameSpec, patch: &Value) -> GameSpec {
             s.seed = spec.seed;
             s.prompt = spec.prompt.clone();
             s.ui = spec.ui.clone();
+            s.style = spec.style.clone();
             fill_defaults(&mut s);
             s
         }

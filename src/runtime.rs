@@ -251,7 +251,7 @@ impl Runtimes {
     // ───────────── Imagem ─────────────
 
     /// Gera uma imagem em `out`. `Ok(false)` => runtime embutido (use o gerador procedural).
-    pub async fn generate_image(&self, prompt: &str, w: u32, h: u32, out: &Path, reference: Option<&Path>) -> Result<bool> {
+    pub async fn generate_image(&self, prompt: &str, negative: &str, w: u32, h: u32, out: &Path, reference: Option<&Path>) -> Result<bool> {
         let a = self.agent(Task::Image);
         let timeout = Duration::from_secs(self.snapshot().request_timeout_secs);
         if let Some(p) = out.parent() {
@@ -271,6 +271,9 @@ impl Runtimes {
                 let (iw, ih) = (w.clamp(256, 768) / 64 * 64, h.clamp(256, 768) / 64 * 64);
                 let mut cmd = Command::new(bin);
                 cmd.arg("-m").arg(&model).arg("-p").arg(prompt).arg("-o").arg(out).args(["-W", &iw.to_string(), "-H", &ih.to_string()]);
+                if !negative.is_empty() {
+                    cmd.arg("-n").arg(negative);
+                }
                 if let Some(r) = reference.filter(|r| r.is_file()) {
                     cmd.arg("-i").arg(r).args(["--strength", "0.65"]);
                 }
@@ -280,7 +283,7 @@ impl Runtimes {
             }
             RuntimeKind::Command => {
                 let model = if a.model.is_empty() { String::new() } else { safe_join(&self.paths.models, &a.model).map(|p| p.display().to_string()).unwrap_or_default() };
-                self.run_template(&a, prompt, out, &model, &[("w", w.to_string()), ("h", h.to_string()), ("kind", "image".into())], timeout).await?;
+                self.run_template(&a, prompt, out, &model, &[("w", w.to_string()), ("h", h.to_string()), ("kind", "image".into()), ("negative", negative.to_string())], timeout).await?;
                 Ok(out.is_file())
             }
             RuntimeKind::Openai => {
@@ -358,7 +361,7 @@ impl Runtimes {
             }
             Task::Image => {
                 let out = std::env::temp_dir().join(format!("gameflow-test-{}.png", uuid::Uuid::new_v4()));
-                let ok = self.generate_image("a tiny red apple, pixel art", 256, 256, &out, None).await?;
+                let ok = self.generate_image("a tiny red apple, pixel art", "", 256, 256, &out, None).await?;
                 let _ = std::fs::remove_file(&out);
                 Ok(if ok { "Imagem gerada com sucesso.".into() } else { "Gerador embutido ativo (arte procedural).".into() })
             }
@@ -396,7 +399,7 @@ mod tests {
 
     fn rt(f: impl FnOnce(&mut Settings)) -> Runtimes {
         let dir = std::env::temp_dir().join(format!("gf-rt-{}", uuid::Uuid::new_v4()));
-        let paths = Paths { root: dir.clone(), projects: dir.join("p"), models: dir.join("m"), settings_file: dir.join("s.json") };
+        let paths = Paths { root: dir.clone(), projects: dir.join("p"), models: dir.join("m"), presets: dir.join("pr"), settings_file: dir.join("s.json") };
         let mut s = Settings::default();
         f(&mut s);
         Runtimes::new(paths, Arc::new(RwLock::new(s)))
@@ -406,7 +409,7 @@ mod tests {
     async fn builtin_returns_none() {
         let r = rt(|_| {});
         assert!(r.chat(Task::Code, &[ChatMsg::user("oi")], 10).await.unwrap().is_none());
-        assert!(!r.generate_image("x", 64, 64, Path::new("/tmp/x.png"), None).await.unwrap());
+        assert!(!r.generate_image("x", "", 64, 64, Path::new("/tmp/x.png"), None).await.unwrap());
         assert!(r.is_builtin(Task::Text));
     }
 
