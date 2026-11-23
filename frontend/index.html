@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="pt-BR" data-theme="grafite">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>GameFlow</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%232b2f36'/%3E%3Cpath d='M8 20c0-5 3-9 8-9s8 4 8 9' fill='none' stroke='%236f9ed8' stroke-width='3' stroke-linecap='round'/%3E%3Ccircle cx='12' cy='21' r='2.2' fill='%236f9ed8'/%3E%3Ccircle cx='20' cy='21' r='2.2' fill='%236f9ed8'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+  <div class="app" id="app">
+    <header class="titlebar">
+      <div class="brand"><svg viewBox="0 0 32 32" width="22" height="22" aria-hidden="true"><rect width="32" height="32" rx="7" fill="var(--panel2)"/><path d="M8 20c0-5 3-9 8-9s8 4 8 9" fill="none" stroke="var(--accent)" stroke-width="3" stroke-linecap="round"/><circle cx="12" cy="21" r="2.2" fill="var(--accent)"/><circle cx="20" cy="21" r="2.2" fill="var(--accent)"/></svg><strong>GameFlow</strong></div>
+      <div class="project-title" id="projectTitle">Nenhum projeto aberto</div>
+      <div class="toolbar">
+        <button class="btn primary" id="btnPlay" title="Jogar (F5)" disabled>▶ Jogar</button>
+        <button class="btn" id="btnReload" title="Recarregar o jogo" disabled>⟳</button>
+        <button class="btn" id="btnPopout" title="Abrir o jogo em nova aba" disabled>↗</button>
+        <button class="btn" id="btnExport" title="Baixar o jogo como .zip" disabled>⬇ Exportar</button>
+        <button class="btn" id="btnFolder" title="Abrir a pasta do projeto no seu computador" disabled>📁</button>
+        <span class="sep"></span>
+        <button class="btn icon" id="btnSettings" title="Configurações (Ctrl+,)">⚙</button>
+      </div>
+    </header>
+
+    <aside class="sidebar" id="sidebar">
+      <section class="side-sec">
+        <div class="panel-h"><span>PROJETOS</span><span class="spacer"></span><button class="icon-btn" id="btnNewProject" title="Novo projeto">＋</button></div>
+        <div class="project-list" id="projectList"></div>
+      </section>
+      <section class="side-sec grow">
+        <div class="panel-h"><span>ARQUIVOS</span><span class="spacer"></span>
+          <button class="icon-btn" id="btnNewFile" title="Novo arquivo">📄</button>
+          <button class="icon-btn" id="btnNewFolder" title="Nova pasta">🗀</button>
+          <button class="icon-btn" id="btnUpload" title="Enviar arquivos (imagens, sons...)">⤒</button>
+          <button class="icon-btn" id="btnRefreshTree" title="Atualizar">⟳</button>
+        </div>
+        <div class="tree" id="tree" tabindex="0"></div>
+      </section>
+    </aside>
+    <div class="resizer" id="resizeLeft"></div>
+
+    <main class="center">
+      <div class="tabs" id="tabs"></div>
+      <div class="stage" id="stage"></div>
+      <div class="console" id="console" hidden>
+        <div class="panel-h"><span>CONSOLE DO JOGO</span><span class="spacer"></span><button class="icon-btn" id="btnClearConsole" title="Limpar">⌫</button><button class="icon-btn" id="btnCloseConsole" title="Fechar">✕</button></div>
+        <div class="console-body" id="consoleBody"></div>
+      </div>
+    </main>
+
+    <div class="resizer" id="resizeRight"></div>
+    <aside class="agents" id="agentsPanel">
+      <div class="panel-h"><span>AGENTES</span><span class="spacer"></span><span class="mode-switch" id="modeSwitch" hidden></span></div>
+      <div class="chat" id="chat"></div>
+      <div class="composer" id="composer">
+        <div class="chips" id="attachChips"></div>
+        <textarea id="prompt" rows="3" placeholder="Descreva o jogo que você quer criar…  (Enter envia • Shift+Enter nova linha)"></textarea>
+        <div class="composer-row">
+          <button class="icon-btn" id="btnAttach" title="Anexar imagens/sons de referência ou para usar no jogo">📎</button>
+          <select id="genreSelect" title="Gênero do jogo"></select>
+          <span class="spacer"></span>
+          <button class="btn danger" id="btnStop" hidden>■ Parar</button>
+          <button class="btn primary" id="btnSend" disabled>Gerar ➤</button>
+        </div>
+      </div>
+    </aside>
+
+    <footer class="statusbar" id="statusbar"><span id="statusLeft"></span><span class="spacer"></span><span id="statusRight"></span></footer>
+  </div>
+  <input type="file" id="fileInput" multiple hidden>
+  <input type="file" id="attachInput" multiple hidden accept="image/*,audio/*">
+  <div id="modalRoot"></div>
+  <div id="toastRoot"></div>
+  <div id="ctxMenu" class="ctx" hidden></div>
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>

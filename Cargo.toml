@@ -1,0 +1,43 @@
+[package]
+name = "gameflow"
+version = "0.1.0"
+edition = "2024"
+description = "GameFlow - IDE low/no-code para criar jogos completos com IA local"
+license = "MIT"
+repository = "https://github.com/KMC1525/GameFlow"
+readme = "README.md"
+
+[dependencies]
+anyhow = "1.0.105"
+axum = { version = "0.8.9", features = ["multipart"] }
+base64 = "0.23.1"
+chrono = { version = "0.4.45", default-features = false, features = ["clock", "serde"] }
+clap = { version = "4.6.9", features = ["derive"] }
+dirs = "7.0.0"
+flate2 = "1.1.11"
+futures-util = "0.3.34"
+hex = "0.4.3"
+image = { version = "0.25.10", default-features = false, features = ["png", "jpeg"] }
+mime_guess = "2.0.5"
+open = "5.4.5"
+reqwest = { version = "0.13.5", features = ["json", "stream", "query"] }
+rust-embed = "8.14.0"
+serde = { version = "1.0.229", features = ["derive"] }
+serde_json = "1.0.154"
+sha2 = "0.11.1"
+tar = "0.4.46"
+tokio = { version = "1.54.1", features = ["full"] }
+tokio-stream = { version = "0.1.19", features = ["sync"] }
+tracing = "0.1.44"
+tracing-subscriber = { version = "0.3.23", features = ["env-filter"] }
+uuid = { version = "1.29.3", features = ["v4"] }
+zip = { version = "9.8.2", default-features = false, features = ["deflate"] }
+
+[profile.release]
+opt-level = 3
+lto = "thin"
+codegen-units = 4
+strip = true
+
+[profile.dev.package."*"]
+opt-level = 1
