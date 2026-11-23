@@ -18,7 +18,7 @@ const GENRES = {
   rpg2d: { prompt: 'RPG 2D de fantasia', keys: ['KeyD', 'KeyS', 'KeyA', 'KeyW'], hold: 500 },
   rpg3d: { prompt: 'RPG 3D no deserto', keys: ['KeyD', 'KeyS', 'KeyA', 'KeyW'], hold: 500 },
   visual_novel: { prompt: 'Visual novel de mistério', keys: [], hold: 0, vn: true },
-  platformer2d: { prompt: 'Plataforma 2D na floresta', keys: ['KeyD'], hold: 1500, jump: true },
+  platformer2d: { prompt: 'Plataforma 2D na floresta', keys: ['KeyD'], hold: 1500, jump: true, preset: 'neon-noir' },
   platformer3d: { prompt: 'Plataforma 3D de lava', keys: ['KeyW', 'KeyD'], hold: 600 },
   fps: { prompt: 'FPS em primeira pessoa', keys: ['KeyW', 'KeyD', 'KeyW'], hold: 500 },
   tps: { prompt: 'Tiro em terceira pessoa no espaço', keys: ['KeyW', 'KeyD'], hold: 600 },
@@ -30,7 +30,7 @@ const fail = (m) => { failures++; console.error('  ✗ ' + m); };
 
 (async () => {
   for (const [g, c] of Object.entries(GENRES)) {
-    const r = spawnSync(BIN, ['generate', c.prompt, '--name', 'smoke-' + g, '--genre', g], { env, encoding: 'utf8' });
+    const r = spawnSync(BIN, ['generate', c.prompt, '--name', 'smoke-' + g, '--genre', g, ...(c.preset ? ['--preset', c.preset] : [])], { env, encoding: 'utf8' });
     if (r.status !== 0) { fail(`generate ${g} falhou:\n${r.stdout}\n${r.stderr}`); }
   }
   const server = spawn(BIN, ['start', '--no-open', '--port', PORT], { env, stdio: 'ignore' });

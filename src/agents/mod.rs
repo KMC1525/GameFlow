@@ -20,6 +20,7 @@ pub mod roles;
 pub mod run;
 
 use crate::config::Settings;
+use crate::presets::{Presets, StylePreset};
 use crate::projects::{HIDDEN_DIR, Projects};
 use crate::runtime::Runtimes;
 use crate::spec::GameSpec;
@@ -80,6 +81,8 @@ pub struct Ctx {
     pub rt: Arc<Runtimes>,
     pub settings: Settings,
     pub req: GenerateRequest,
+    /// Style preset chosen for this run (palette, art style, prompt hints).
+    pub preset: Option<StylePreset>,
     pub attachments: Vec<Attachment>,
     pub bb: Mutex<Blackboard>,
     ids: Mutex<HashMap<String, u32>>,
@@ -174,12 +177,13 @@ pub struct Orchestrator {
     pub projects: Projects,
     pub rt: Arc<Runtimes>,
     pub settings: Arc<RwLock<Settings>>,
+    pub presets: Presets,
     runs: Mutex<HashMap<String, Arc<Run>>>,
 }
 
 impl Orchestrator {
-    pub fn new(projects: Projects, rt: Arc<Runtimes>, settings: Arc<RwLock<Settings>>) -> Arc<Self> {
-        Arc::new(Orchestrator { projects, rt, settings, runs: Mutex::new(HashMap::new()) })
+    pub fn new(projects: Projects, rt: Arc<Runtimes>, settings: Arc<RwLock<Settings>>, presets: Presets) -> Arc<Self> {
+        Arc::new(Orchestrator { projects, rt, settings, presets, runs: Mutex::new(HashMap::new()) })
     }
 
     pub fn get(&self, run_id: &str) -> Option<Arc<Run>> {
@@ -202,6 +206,10 @@ impl Orchestrator {
         if self.active_for(project_id).is_some() {
             return Err(anyhow!("já existe uma geração em andamento neste projeto"));
         }
+        let preset = match req.preset.as_deref().map(str::trim).filter(|s| !s.is_empty()) {
+            Some(id) => Some(self.presets.get(id).ok_or_else(|| anyhow!("estilo \"{id}\" não encontrado na biblioteca"))?),
+            None => None,
+        };
         let meta = self.projects.get(project_id).unwrap_or_default();
         let mut req = req;
         let existing = dir.join("game.json").is_file() && meta.generated;
@@ -243,6 +251,7 @@ impl Orchestrator {
             rt: self.rt.clone(),
             settings,
             req: req.clone(),
+            preset,
             attachments,
             bb: Mutex::new(Blackboard { modify: wants_modify && existing, ..Default::default() }),
             ids: Mutex::new(HashMap::new()),
@@ -273,7 +282,7 @@ mod tests {
 
     fn tmp_state() -> S {
         let root = std::env::temp_dir().join(format!("gf-it-{}", uuid::Uuid::new_v4()));
-        build_state(Paths { projects: root.join("projects"), models: root.join("models"), settings_file: root.join("settings.json"), root }).unwrap()
+        build_state(Paths { projects: root.join("projects"), models: root.join("models"), presets: root.join("presets"), settings_file: root.join("settings.json"), root }).unwrap()
     }
 
     async fn run_and_wait(st: &S, id: &str, req: GenerateRequest) -> (bool, String) {
@@ -373,5 +382,72 @@ mod tests {
         assert!(ok);
         let dir = st.projects.dir(&meta.id).unwrap();
         assert!(!dir.join("assets/images/user_passwd.png").exists());
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn style_preset_defines_palette_and_art_style_on_create() {
+        let st = tmp_state();
+        let preset = st.presets.get("neon-noir").unwrap();
+        let meta = st.projects.create("p", None).unwrap();
+        let (ok, summary) = run_and_wait(&st, &meta.id, GenerateRequest { prompt: "plataforma 2D na floresta".into(), preset: Some("neon-noir".into()), ..Default::default() }).await;
+        assert!(ok, "{summary}");
+        let dir = st.projects.dir(&meta.id).unwrap();
+        let spec: crate::spec::GameSpec = serde_json::from_str(&std::fs::read_to_string(dir.join("game.json")).unwrap()).unwrap();
+        assert_eq!(spec.palette.primary, preset.palette.primary);
+        assert_eq!(spec.palette.bg, preset.palette.bg);
+        assert_eq!(spec.art_style, preset.art_style);
+        assert_eq!(spec.style.preset, "neon-noir");
+        assert_eq!(spec.style.negative_prompt, preset.negative_prompt);
+        assert!(std::fs::read_to_string(dir.join("style.css")).unwrap().contains(&preset.palette.bg), "style.css deve usar as cores do estilo");
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn preset_beats_reference_image_palette_and_unknown_preset_is_rejected() {
+        let st = tmp_state();
+        let meta = st.projects.create("p", None).unwrap();
+        // referência laranja/azul — o preset (verde) deve vencer a paleta extraída
+        let mut img = image::RgbaImage::new(16, 16);
+        for p in img.pixels_mut() {
+            *p = image::Rgba([240, 90, 40, 255]);
+        }
+        st.projects.write(&meta.id, "references/ref.png", &crate::procedural::png_bytes(&img).unwrap()).unwrap();
+        let preset = st.presets.get("gameboy-green").unwrap();
+        let req = GenerateRequest {
+            prompt: "jogo".into(),
+            preset: Some("gameboy-green".into()),
+            attachments: vec![run::AttachmentReq { path: "references/ref.png".into(), mode: "reference".into() }],
+            ..Default::default()
+        };
+        let (ok, _) = run_and_wait(&st, &meta.id, req).await;
+        assert!(ok);
+        let spec: crate::spec::GameSpec = serde_json::from_str(&std::fs::read_to_string(st.projects.dir(&meta.id).unwrap().join("game.json")).unwrap()).unwrap();
+        assert_eq!(spec.palette.primary, preset.palette.primary);
+        assert!(st.orch.start(&meta.id, GenerateRequest { prompt: "x".into(), preset: Some("nao-existe".into()), ..Default::default() }).is_err());
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn applying_a_preset_to_an_existing_project_restyles_it_but_keeps_user_assets() {
+        let st = tmp_state();
+        let meta = st.projects.create("p", Some(Genre::Platformer2d)).unwrap();
+        let (ok, _) = run_and_wait(&st, &meta.id, GenerateRequest { prompt: "plataforma 2D".into(), ..Default::default() }).await;
+        assert!(ok);
+        let dir = st.projects.dir(&meta.id).unwrap();
+        let before: crate::spec::GameSpec = serde_json::from_str(&std::fs::read_to_string(dir.join("game.json")).unwrap()).unwrap();
+        let enemy_before = std::fs::read(dir.join("assets/images/enemy.png")).unwrap();
+        std::fs::write(dir.join("assets/images/player.png"), b"meu desenho").unwrap();
+        std::fs::write(dir.join(".gameflow/asset_sources.json"), br#"{"player":"user"}"#).unwrap();
+        let preset = st.presets.get("ember-dusk").unwrap();
+        let (ok, summary) = run_and_wait(&st, &meta.id, GenerateRequest { prompt: "Aplicar estilo visual: Ember Dusk".into(), preset: Some("ember-dusk".into()), ..Default::default() }).await;
+        assert!(ok, "{summary}");
+        assert!(summary.starts_with("Atualizei"), "{summary}");
+        let after: crate::spec::GameSpec = serde_json::from_str(&std::fs::read_to_string(dir.join("game.json")).unwrap()).unwrap();
+        assert_eq!(after.palette.accent, preset.palette.accent);
+        assert_eq!(after.title, before.title);
+        assert_eq!(after.world, before.world);
+        assert_ne!(std::fs::read(dir.join("assets/images/enemy.png")).unwrap(), enemy_before, "a arte gerada deve ser refeita com a nova paleta");
+        assert_eq!(std::fs::read(dir.join("assets/images/player.png")).unwrap(), b"meu desenho");
+        // e o estilo do projeto pode ser capturado de volta numa biblioteca nova
+        let captured = crate::presets::StylePreset::from_spec(&after, "Capturado", "").unwrap();
+        assert_eq!(captured.palette.accent, preset.palette.accent);
     }
 }

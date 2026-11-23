@@ -2,31 +2,35 @@
 
 # 🎮 GameFlow
 
-**Uma IDE estilo VS Code / Cursor, low/no-code, que cria jogos completos a partir de texto — com IAs generativas rodando 100% no seu computador.**
+**A VS Code / Cursor-style low/no-code IDE that builds complete games from text — with generative AI running 100% on your own computer.**
 
-Rust no backend · HTML, CSS e JS na interface e nos jogos gerados · Windows, macOS e Linux
+Rust backend · HTML, CSS and JS for the interface and for the generated games · Windows, macOS and Linux
 
-![GameFlow rodando um RPG gerado pelos agentes](docs/screenshots/ide-jogo.png)
+**English** · [Português (Brasil)](README.pt-BR.md)
+
+![GameFlow running an RPG built by the agents](docs/screenshots/ide-jogo.png)
 
 </div>
 
 ---
 
-## O que é
+> The interface is currently in Brazilian Portuguese. Generated games speak the language of your prompt (Portuguese or English).
 
-Você descreve o jogo ("um RPG 2D numa floresta mágica com um dragão como chefe final"), opcionalmente anexa desenhos ou sons, e um **fluxo não linear de agentes de IA locais** — Diretor, Roteirista, Arquiteto, Artista, Compositor, Engenheiro, Integrador, Testador e Publicador — constrói o jogo inteiro: código, mapas, história, arte e sons. O resultado é um projeto de **HTML, CSS e JS puros** que roda em qualquer navegador, sem instalar nada.
+## What it is
 
-Feito para **não programadores, artistas independentes e entusiastas**:
+You describe a game ("a 2D RPG in an enchanted forest with a dragon as the final boss"), optionally attach drawings or sounds, and a **non-linear flow of local AI agents** — Director, Writer, Architect, Artist, Composer, Engineer, Integrator, Tester and Publisher — builds the whole thing: code, maps, story, art and sound. The result is a project made of plain **HTML, CSS and JS** that runs in any browser with nothing to install.
 
-- **À direita**: a barra de prompt + o fluxo de agentes trabalhando em tempo real.
-- **À esquerda**: projetos e arquivos (código, imagens, sons) — tudo editável.
-- **No centro**: o jogo rodando ao vivo, ou o editor de código.
+Built for **non-programmers, indie artists and enthusiasts**:
 
-Funciona **sem nenhum modelo de IA configurado** (geradores embutidos já entregam jogos completos e jogáveis) e fica muito mais livre e original quando você liga modelos locais do Hugging Face.
+- **Right side**: the prompt bar + the agent flow working in real time.
+- **Left side**: projects and files (code, images, sounds) — everything is editable.
+- **Center**: the live game, or the code editor.
 
-## Instalação (pelo terminal)
+It works **with no AI model configured at all** (built-in generators already deliver complete, playable games) and gets much freer and more original when you plug in local Hugging Face models.
 
-**Linux e macOS**
+## Install (from the terminal)
+
+**Linux and macOS**
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/KMC1525/GameFlow/main/install.sh | sh
@@ -38,192 +42,210 @@ curl -fsSL https://raw.githubusercontent.com/KMC1525/GameFlow/main/install.sh | 
 irm https://raw.githubusercontent.com/KMC1525/GameFlow/main/install.ps1 | iex
 ```
 
-**A partir do código-fonte** (qualquer sistema com [Rust](https://rustup.rs))
+**From source** (any system with [Rust](https://rustup.rs))
 
 ```bash
 cargo install --git https://github.com/KMC1525/GameFlow --locked
 ```
 
-Depois é só rodar:
+Then just run:
 
 ```bash
 gameflow
 ```
 
-O GameFlow abre a interface no seu navegador (`http://127.0.0.1:7878`).
+GameFlow opens the interface in your browser (`http://127.0.0.1:7878`).
 
-### Atualização
+### Updating
 
 ```bash
-gameflow update          # baixa e instala a versão mais recente (com verificação SHA-256)
-gameflow update --check  # só verifica se há versão nova
+gameflow update          # downloads and installs the latest release (SHA-256 verified)
+gameflow update --check  # only checks whether a new version exists
 ```
 
-### Outros comandos
+### Commands
 
-| Comando | O que faz |
+| Command | What it does |
 |---|---|
-| `gameflow` / `gameflow start [--port N] [--no-open]` | Inicia a IDE |
-| `gameflow generate "descrição" [--name X] [--genre G] [--attach arquivo]` | Gera um jogo pelo terminal, sem abrir a interface |
-| `gameflow doctor` | Mostra pastas, runtimes de IA encontrados e agentes configurados |
-| `gameflow paths` | Mostra onde ficam projetos, modelos e configurações |
+| `gameflow` / `gameflow start [--port N] [--no-open]` | Starts the IDE |
+| `gameflow generate "description" [--name X] [--genre G] [--preset P] [--attach file]` | Generates a game from the terminal, without opening the UI |
+| `gameflow preset list \| import FILE \| export ID [--out FILE] \| delete ID` | Manages [style presets](#style-presets) |
+| `gameflow doctor` | Shows folders, detected AI runtimes and configured agents |
+| `gameflow paths` | Shows where projects, models and settings live |
 
-### Variáveis de ambiente (opcionais)
+### Environment variables (optional)
 
-| Variável | Para que serve |
+| Variable | Purpose |
 |---|---|
-| `GAMEFLOW_HOME` | Guarda **tudo** (projetos, modelos, configurações) numa pasta só — útil para instalações portáteis |
-| `GAMEFLOW_HF_ENDPOINT` | Usa outro endereço no lugar de `https://huggingface.co` (espelhos/proxy) |
+| `GAMEFLOW_HOME` | Keeps **everything** (projects, models, presets, settings) in a single folder — handy for portable installs |
+| `GAMEFLOW_HF_ENDPOINT` | Uses another address instead of `https://huggingface.co` (mirrors/proxies) |
 
-## Primeiros passos
+## Getting started
 
-1. **＋ Novo projeto** — cada jogo fica salvo num projeto, com todo o código e os assets.
-2. **Descreva o jogo** na barra à direita e clique em **Gerar ➤**. Você acompanha cada agente trabalhando.
-3. **▶ Jogar** — teste na hora. Peça mudanças em linguagem natural ("deixe mais difícil", "tema neon", "adicione pulo duplo") ou edite os arquivos à esquerda — a prévia recarrega sozinha ao salvar (`Ctrl+S`).
-4. **⬇ Exportar** — baixa o jogo como `.zip`. É só abrir o `index.html` em qualquer navegador (ou publicar no itch.io).
+1. **＋ New project** — every game is saved in its own project with all its code and assets.
+2. **Describe the game** in the bar on the right and click **Generate ➤**. Watch each agent work.
+3. **▶ Play** — test right away. Ask for changes in plain language ("make it harder", "neon theme", "add double jump") or edit the files on the left — the preview reloads when you save (`Ctrl+S`).
+4. **⬇ Export** — downloads the game as a `.zip`. Just open `index.html` in any browser (or publish it on itch.io).
 
-![Editor de código com o jogo](docs/screenshots/ide-editor.png)
+![Code editor next to the game](docs/screenshots/ide-editor.png)
 
-### Anexando referências e assets 📎
+### Attaching references and assets 📎
 
-Arraste ou anexe imagens/sons na barra de prompt. Cada anexo pode ser:
+Drag or attach images/sounds to the prompt bar. Each attachment can be:
 
-- **referência** — inspiração para a IA; as cores das suas imagens viram a **paleta do jogo**;
-- **usar no jogo** — o arquivo entra no jogo como está. O GameFlow casa pelo nome (`heroi.png` → jogador, `chefe.png` → chefe, `musica.wav` → trilha, `fundo.png` → cenário…). Seus arquivos **nunca** são sobrescritos pelos agentes.
+- **reference** — inspiration for the AI; the colors of your images become the **game palette**;
+- **use in game** — the file goes into the game as-is. GameFlow matches by file name (`hero.png` → player, `boss.png` → boss, `music.wav` → soundtrack, `background.png` → scenery…). Your files are **never** overwritten by the agents.
 
-Também dá para combinar os dois: texto + anexos.
+You can combine both: text + attachments.
 
-## Tipos de jogo
+## Style presets
 
-| Gênero | Estilo | Destaques |
+A **style preset** is a reusable "look": an 8-color palette, an art-style description and hints for the image model. Use them to give several games the same visual identity, share a look with other people, or keep your favorite styles around.
+
+- **Pick one** in the prompt bar (`Style:` selector) for the next generation, or **apply it to an existing project** — the palette, `style.css` and all generated art are redone (your own files stay untouched).
+- **Export** any preset to a portable `.gfstyle.json` file; **import** files from other people or computers (drag them onto Settings → *Estilos de arte* or onto the prompt bar).
+- **Save the style of a project** to your library to reuse it elsewhere.
+- Five presets ship with GameFlow: *Neon Noir*, *Cozy Pastel*, *Handheld Green*, *Storybook Watercolor* and *Ember Dusk*.
+- From the terminal: `gameflow preset export neon-noir`, `gameflow preset import look.gfstyle.json`, `gameflow generate "…" --preset neon-noir`.
+
+Imported files are validated (format, version, size, `#rrggbb` colors) and are always stored under a fresh id, so they can never overwrite a built-in preset. The file format is documented in [`docs/STYLE_PRESETS.md`](docs/STYLE_PRESETS.md).
+
+![Style presets library](docs/screenshots/estilos.png)
+
+## Game types
+
+| Genre | Style | Highlights |
 |---|---|---|
-| **RPG 2D** | visão de cima | exploração, NPCs com diálogo, combate em tempo real, XP/nível, relíquias que despertam o chefe |
-| **RPG 3D** | câmera 3ª pessoa elevada (Q/E giram) | mesma lógica do RPG 2D em mundo 3D |
-| **Visual Novel** | cenas + retratos | roteiro ramificado, escolhas com variáveis e múltiplos finais |
-| **Plataforma 2D** | rolagem lateral | fases em texto editáveis, pulo variável, moedas, inimigos, espinhos, pulo duplo opcional |
-| **Plataforma 3D** | câmera 3ª pessoa | percurso de plataformas, checkpoints, inimigos patrulhando |
-| **FPS (1ª pessoa)** | raycasting | labirintos, munição, vida, mini-mapa |
-| **TPS (3ª pessoa)** | arena 3D | ondas de inimigos, tiro, drops de vida |
-| **Arcade** | nave | ondas, power-ups, escudo, chefe final |
+| **2D RPG** | top-down | exploration, NPC dialogue, real-time combat, XP/levels, relics that wake the boss |
+| **3D RPG** | elevated third-person camera (Q/E rotate) | same logic as the 2D RPG in a 3D world |
+| **Visual Novel** | scenes + portraits | branching script, choices with variables, multiple endings |
+| **2D Platformer** | side-scrolling | editable text-based levels, variable jump, coins, enemies, spikes, optional double jump |
+| **3D Platformer** | third-person camera | platform course, checkpoints, patrolling enemies |
+| **FPS** | raycasting | mazes, ammo, health, minimap |
+| **TPS** | 3D arena | enemy waves, shooting, health drops |
+| **Arcade** | spaceship | waves, power-ups, shield, final boss |
 
-O gênero é detectado pelo seu texto (ou escolhido no seletor). Os mapas/fases são gerados proceduralmente (determinísticos) e ficam como **texto simples** em `game.json`, então qualquer pessoa pode editá-los à mão.
+The genre is detected from your text (or picked in the selector). Maps and levels are procedurally generated (deterministic) and stored as **plain text** in `game.json`, so anyone can edit them by hand.
 
-## Os agentes: um fluxo não linear
+## The agents: a non-linear flow
 
 ```
-              ┌─► Roteirista ──┐
-   Diretor ───┼─► Arquiteto ───┴─► Engenheiro ─┐
-              ├─► Artista ─────────────────────┼─► Integrador ─► Testador ─► Publicador
-              └─► Compositor ──────────────────┘       │            │
-                       ▲   pedidos de assets faltantes ◄┘            │
-                       └──────── retrabalho (Engenheiro #2…) ◄───────┘
+              ┌─► Writer ─────┐
+   Director ──┼─► Architect ──┴─► Engineer ─┐
+              ├─► Artist ───────────────────┼─► Integrator ─► Tester ─► Publisher
+              └─► Composer ─────────────────┘       │            │
+                       ▲   requests for missing assets ◄┘        │
+                       └──────── rework (Engineer #2…) ◄─────────┘
 ```
 
-- Os nós rodam **em paralelo** assim que as dependências terminam e se comunicam por um quadro-negro compartilhado.
-- O **Integrador** descobre assets que faltam e **pede ao Artista/Compositor** (novos nós nascem em tempo de execução).
-- O **Testador** valida HTML, `game.json`, roteiro, manifesto e a sintaxe de cada script (com `node --check` se o Node.js estiver instalado). Se achar problemas, **devolve ao Engenheiro** com a lista (até N rodadas); persistindo o erro, o código problemático é isolado e restaurado para que o jogo base continue jogável.
-- Cada agente usa o modelo da sua **tarefa** (texto, código, imagem ou som) — e **sempre** tem um caminho embutido de reserva, então o pipeline nunca trava por falta de modelo.
+- Nodes run **in parallel** as soon as their dependencies finish and talk through a shared blackboard.
+- The **Integrator** notices missing assets and **asks the Artist/Composer** for them (new nodes are born at run time).
+- The **Tester** validates HTML, `game.json`, the script, the asset manifest and the syntax of every script (with `node --check` if Node.js is installed). If it finds problems it **sends the game back to the Engineer** with the list (up to N rounds); if the error persists, the problematic code is isolated and restored so the base game stays playable.
+- Each agent uses the model of its **task** (text, code, image or sound) — and **always** has a built-in fallback, so the pipeline never stalls for lack of a model.
 
-| Agente | Tarefa | O que faz |
+| Agent | Task | What it does |
 |---|---|---|
-| Diretor | texto | Transforma o pedido (e as cores das referências) no design do jogo |
-| Roteirista | texto | Falas, missão, personagens e roteiros de Visual Novel |
-| Arquiteto | código | Escolhe recursos do template e gera mapas/fases |
-| Artista | imagem | Sprites, tiles, fundos, texturas e retratos (usa seus arquivos quando marcados) |
-| Compositor | som | Efeitos e trilha |
-| Engenheiro | código | Instancia o template e escreve mecânicas extras em `js/custom.js` |
-| Integrador | código | Manifesto de assets, `index.html`, `js/data.js` |
-| Testador | código | Valida e pede correções |
-| Publicador | — | README do jogo, metadados do projeto, registro da execução |
+| Director | text | Turns the request (plus reference colors or the chosen style) into the game design |
+| Writer | text | Dialogue, quest, characters and Visual Novel scripts |
+| Architect | code | Picks template features and generates maps/levels |
+| Artist | image | Sprites, tiles, backgrounds, textures and portraits (uses your files when marked) |
+| Composer | sound | Sound effects and soundtrack |
+| Engineer | code | Instantiates the template and writes extra mechanics in `js/custom.js` |
+| Integrator | code | Asset manifest, `index.html`, `js/data.js` |
+| Tester | code | Validates and requests fixes |
+| Publisher | — | The game's README, project metadata, run log |
 
-Todo trabalho da IA no código acontece por **ganchos seguros** (`GF.on('update', …)` em `js/custom.js`): o jogo base não é reescrito, então um modelo pequeno não consegue "quebrar o jogo inteiro".
+All AI work on code happens through **safe hooks** (`GF.on('update', …)` in `js/custom.js`): the base game is not rewritten, so a small model cannot "break the whole game".
 
-## Modelos locais do Hugging Face
+## Local Hugging Face models
 
-Em **⚙ Configurações → Agentes** você escolhe o modelo de cada tarefa; em **Modelos (Hugging Face)** busca e baixa (com retomada e progresso) direto para a pasta local do GameFlow.
+In **⚙ Settings → Agents** you choose the model for each task; under **Models (Hugging Face)** you search and download (with resume and progress) straight into GameFlow's local folder.
 
-| Tarefa | Runtimes suportados |
+| Task | Supported runtimes |
 |---|---|
-| Texto / Código | **llama.cpp** (`llama-server` com GGUF baixado do Hub), ou qualquer servidor compatível com a API OpenAI (**Ollama**, **LM Studio**, vLLM…) |
-| Imagem | **stable-diffusion.cpp**, servidor compatível (`/images/generations`) ou comando próprio |
-| Som | Comando próprio (**Piper** para voz, scripts…) ou o sintetizador embutido |
+| Text / Code | **llama.cpp** (`llama-server` with a GGUF from the Hub), or any OpenAI-compatible server (**Ollama**, **LM Studio**, vLLM…) |
+| Image | **stable-diffusion.cpp**, a compatible server (`/images/generations`) or a custom command |
+| Sound | Custom command (**Piper** for voices, scripts…) or the built-in synthesizer |
 
-O GameFlow inicia e gerencia o `llama-server` sozinho. Guia passo a passo em [`docs/MODELOS.md`](docs/MODELOS.md).
+GameFlow starts and manages `llama-server` for you. Step-by-step guide in [`docs/MODELS.md`](docs/MODELS.md).
 
-![Configurações dos agentes](docs/screenshots/configuracoes-agentes.png)
+![Agent settings](docs/screenshots/configuracoes-agentes.png)
 
-### Aparência
+### Appearance
 
-Cinzas suaves de baixo brilho com detalhes em **azul dessaturado**, pensados para sessões longas: **Grafite** (padrão), **Névoa**, **Ardósia**, **Crepúsculo** e **Papel** (claro). A **escala da interface** (70–180 %) e o tamanho da letra do editor são ajustáveis; painéis laterais são redimensionáveis.
+Soft, low-brightness grays with **desaturated blue** accents, designed for long sessions: **Grafite** (default), **Névoa**, **Ardósia**, **Crepúsculo** and **Papel** (light). The **interface scale** (70–180 %) and editor font size are adjustable; side panels are resizable.
 
-## Como é um projeto gerado
+## What a generated project looks like
 
 ```
-meu-jogo/
-├── index.html          # abre direto no navegador (funciona até via file://)
-├── style.css           # cores da paleta do jogo
-├── game.json           # TUDO editável: história, personagens, cores, mapas, textos
+my-game/
+├── index.html          # opens straight in the browser (even via file://)
+├── style.css           # colors from the game palette
+├── game.json           # EVERYTHING editable: story, characters, colors, maps, texts
 ├── js/
-│   ├── gameflow.js     # mini-engine (assets, áudio, entrada, telas)
-│   ├── engine3d.js     # só nos gêneros 3D (renderizador por software)
-│   ├── game.js         # lógica do gênero
-│   ├── custom.js       # SEUS ajustes e os da IA (ganchos GF.on)
-│   └── data.js         # gerado a partir de game.json + manifesto
-├── assets/images/      # PNGs (troque pelo seu desenho mantendo o nome)
+│   ├── gameflow.js     # mini-engine (assets, audio, input, screens)
+│   ├── engine3d.js     # 3D genres only (software renderer)
+│   ├── game.js         # genre logic
+│   ├── custom.js       # YOUR tweaks and the AI's (GF.on hooks)
+│   └── data.js         # generated from game.json + the manifest
+├── assets/images/      # PNGs (swap in your own drawing, keeping the name)
 ├── assets/audio/       # WAVs
-├── docs/               # design.md e architecture.md escritos pelos agentes
-└── references/         # seus anexos
+├── docs/               # design.md and architecture.md written by the agents
+└── references/         # your attachments
 ```
 
-Ganchos de `js/custom.js`:
+`js/custom.js` hooks:
 
 ```js
-GF.on('update', (dt) => { /* todo quadro */ });
-GF.on('event', (nome, dados) => { if (nome === 'coin') GF.toast('Boa!'); });
+GF.on('update', (dt) => { /* every frame */ });
+GF.on('event', (name, data) => { if (name === 'coin') GF.toast('Nice!'); });
 ```
 
-## Privacidade e segurança
+## Privacy and security
 
-- Tudo roda **localmente**: o servidor escuta só em `127.0.0.1`; nenhum dado seu sai do computador (exceto buscas/downloads no Hugging Face, quando você pede).
-- Proteção contra **DNS rebinding** e **CSRF** (valida `Host` e `Origin`), para que sites abertos no seu navegador não consigam chamar a API local.
-- Os jogos (potencialmente escritos por IA) rodam num **servidor de origem separada**, dentro de `iframe` com `sandbox`, e com **CSP que bloqueia conexões externas**.
-- Caminhos de arquivo são validados (sem `..`, sem links simbólicos que escapem do projeto) e a IA só pode escrever em `js/*.js`, `style.css`, `index.html` e `game.json`.
+- Everything runs **locally**: the server listens only on `127.0.0.1`; none of your data leaves the computer (except Hugging Face searches/downloads, when you ask for them).
+- Protection against **DNS rebinding** and **CSRF** (validates `Host` and `Origin`) so websites open in your browser cannot call the local API.
+- Games (potentially written by AI) run on a **separate-origin server**, inside a sandboxed `iframe`, with a **CSP that blocks external connections**.
+- File paths are validated (no `..`, no symlinks that escape the project) and the AI may only write to `js/*.js`, `style.css`, `index.html` and `game.json`.
+- Imported style presets are size-limited and strictly validated; they are plain data and never executed.
 
-## Desenvolvimento
+## Development
 
 ```bash
 git clone https://github.com/KMC1525/GameFlow && cd GameFlow
-cargo run                       # abre a IDE (em debug, lê frontend/ e templates/ do disco)
-cargo test                      # 44+ testes: geradores, agentes, grafo, projetos, atualização, segurança
+cargo run                       # opens the IDE (in debug it reads frontend/ and templates/ from disk)
+cargo test                      # 50+ tests: generators, agents, graph, projects, presets, update, security
 cargo clippy --all-targets -- -D warnings
 npm i playwright && npx playwright install chromium
-node scripts/smoke-games.js     # gera e "joga" os 8 gêneros no Chromium, falha com qualquer erro de JS
+node scripts/smoke-games.js     # generates and "plays" all 8 genres in Chromium, fails on any JS error
 ```
 
 ```
 src/
-├── main.rs            CLI (start, update, doctor, generate, paths)
-├── server.rs          API REST + SSE, guarda de Host/Origin, servidor de jogos isolado
-├── agents/            orquestrador, grafo não linear (graph.rs), papéis (roles.rs), prompts (llm.rs), checagens
-├── runtime.rs         llama.cpp gerenciado, OpenAI-compat, stable-diffusion.cpp, comandos
-├── hf.rs              busca/arquivos/downloads do Hugging Face
-├── spec.rs            "contrato" do jogo (game.json), gêneros, temas, heurística de prompt
-├── levelgen.rs        mapas e fases procedurais · story.rs roteiros ramificados
-├── procedural.rs      arte pixel-art (PNG) e áudio chiptune (WAV) procedurais, paleta por imagem
-├── templates.rs       templates embutidos · update.rs auto-atualização
-frontend/              interface (HTML/CSS/JS, módulos ES, sem build)
-templates/             jogos-base de cada gênero (HTML/CSS/JS)
+├── main.rs            CLI (start, update, doctor, generate, preset, paths)
+├── server.rs          REST + SSE API, Host/Origin guard, isolated game server
+├── agents/            orchestrator, non-linear graph (graph.rs), roles (roles.rs), prompts (llm.rs), checks
+├── runtime.rs         managed llama.cpp, OpenAI-compatible, stable-diffusion.cpp, commands
+├── hf.rs              Hugging Face search/files/downloads
+├── presets.rs         style presets: format, validation, library, built-ins
+├── spec.rs            the game "contract" (game.json), genres, themes, prompt heuristics
+├── levelgen.rs        procedural maps and levels · story.rs branching scripts
+├── procedural.rs      pixel-art (PNG) and chiptune (WAV) generators, palette from images
+├── templates.rs       embedded templates · update.rs self-update
+frontend/              the interface (HTML/CSS/JS, ES modules, no build step)
+templates/             base game for each genre (HTML/CSS/JS)
 ```
 
-Para publicar uma versão: `git tag v0.1.0 && git push origin v0.1.0` — o workflow `release.yml` compila para Linux (x86_64/arm64), macOS (Intel/Apple Silicon) e Windows, gera `.tar.gz`/`.zip` com `.sha256` e publica; é isso que `install.sh`, `install.ps1` e `gameflow update` consomem.
+To publish a release: `git tag v0.2.0 && git push origin v0.2.0` — the `release.yml` workflow builds for Linux (x86_64/arm64), macOS (Intel/Apple Silicon) and Windows, produces `.tar.gz`/`.zip` files with `.sha256`, and publishes them; that is what `install.sh`, `install.ps1` and `gameflow update` consume. See the [changelog](CHANGELOG.md).
 
-## Status e limitações honestas
+## Status and honest limitations
 
-- Os geradores embutidos, os 8 templates, a interface, o pipeline de agentes (incluindo retrabalho e pedidos de assets) e a segurança têm testes automatizados e foram jogados no Chromium.
-- Os caminhos com **modelos reais** (llama.cpp, stable-diffusion.cpp, Piper, Hugging Face) foram validados contra **servidores simulados com a mesma API** (o ambiente de desenvolvimento não tinha GPU nem acesso ao Hub). Se algo se comportar diferente com um modelo real, abra uma issue com a saída de `gameflow doctor`.
-- A qualidade do que a IA escreve depende do modelo. Modelos pequenos (≤3B) ajudam mais em texto e pequenos ajustes de código; para mecânicas elaboradas prefira modelos de código de 7B+.
-- Os jogos 3D usam um renderizador por software no Canvas 2D (leve e sem dependências), não WebGL — o visual é propositalmente simples.
+- The built-in generators, the 8 templates, the interface, the agent pipeline (including rework and asset requests), style presets and the security layer have automated tests, and the games have been played in Chromium.
+- The paths that use **real models** (llama.cpp, stable-diffusion.cpp, Piper, Hugging Face) were validated against **simulated servers with the same API** (the development environment had no GPU and no access to the Hub). If something behaves differently with a real model, please open an issue with the output of `gameflow doctor`.
+- The quality of what the AI writes depends on the model. Small models (≤3B) help most with text and small code tweaks; for elaborate mechanics prefer 7B+ coding models.
+- Procedural (no-model) art is always pixel-art colored with the style's palette; a style that is not pixel art mainly changes how the game scales sprites and what an image model is asked to draw.
+- 3D games use a software renderer on the Canvas 2D (light and dependency-free), not WebGL — the look is intentionally simple.
 
-## Licença
+## License
 
 [MIT](LICENSE)

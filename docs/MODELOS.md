@@ -1,5 +1,7 @@
 # Guia de modelos locais
 
+*[English](MODELS.md)*
+
 O GameFlow funciona sem IA (geradores embutidos). Para textos, histórias, mecânicas e arte mais livres, ligue modelos locais em **⚙ Configurações → Agentes**. Cada tarefa (texto, código, imagem, som) pode usar um modelo diferente.
 
 Rode `gameflow doctor` a qualquer momento para ver quais programas o GameFlow encontrou.
@@ -40,12 +42,12 @@ Escolha **Servidor local compatível com OpenAI** e informe:
 2. Baixe um modelo de imagem (ex.: `second-state/stable-diffusion-v1-5-GGUF`) na aba Modelos.
 3. Escolha **stable-diffusion.cpp** no agente de imagem e selecione o arquivo. "Argumentos extras" aceita flags como `--steps 20`.
 
-Se você anexou imagens de referência, a primeira é enviada como imagem inicial (`-i`) para guiar o estilo. Sprites gerados por modelo têm o fundo liso removido automaticamente.
+Se você anexou imagens de referência, a primeira é enviada como imagem inicial (`-i`) para guiar o estilo. O prompt negativo do estilo escolhido vai em `-n`. Sprites gerados por modelo têm o fundo liso removido automaticamente. Escolha um [estilo visual](STYLE_PRESETS.md) para guiar todas as imagens do mesmo jeito.
 
 ### Outros geradores
 
 - **Servidor compatível** (`/v1/images/generations`): informe endereço e modelo.
-- **Comando próprio**: use `{prompt}`, `{out}`, `{model}`, `{w}`, `{h}`. Exemplo: `python gerar.py "{prompt}" {out} --size {w}x{h}`.
+- **Comando próprio**: use `{prompt}`, `{negative}`, `{out}`, `{model}`, `{w}`, `{h}`. Exemplo: `python gerar.py "{prompt}" {out} --size {w}x{h}`.
 
 ## Som
 

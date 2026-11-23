@@ -12,6 +12,7 @@ pub struct Paths {
     pub root: PathBuf,
     pub projects: PathBuf,
     pub models: PathBuf,
+    pub presets: PathBuf,
     pub settings_file: PathBuf,
 }
 
@@ -29,7 +30,7 @@ impl Paths {
                 (root, projects)
             }
         };
-        Paths { models: root.join("models"), settings_file: root.join("settings.json"), projects, root }
+        Paths { models: root.join("models"), presets: root.join("presets"), settings_file: root.join("settings.json"), projects, root }
     }
 
     pub fn ensure(&self) -> std::io::Result<()> {

@@ -2,6 +2,8 @@
 import { api, qs } from './api.js';
 import { S, bus, taskName } from './state.js';
 import { h, $, toast, modal, fmtSize, debounce } from './ui.js';
+import { renderTab as renderStyles } from './presets.js';
+import { applyStyleToProject } from './agents.js';
 
 export const THEMES = [
   { id: 'grafite', name: 'Grafite', desc: 'Cinza escuro e azul suave (padrão)', c: ['#23262b', '#2a2e34', '#6f9ed8'] },
@@ -40,7 +42,7 @@ const RT_LABEL = {
 const BUILTIN_LABEL = { text: 'Embutido (modelos prontos de roteiro)', code: 'Embutido (templates de jogo)', image: 'Embutido (arte pixel-art procedural)', sound: 'Embutido (sons e músicas procedurais)' };
 
 let tabId = 'appearance';
-let body, pollTimer = null;
+let body, pollTimer = null, handle = null;
 
 export function openSettings(tab) {
   tabId = tab || tabId;
@@ -48,11 +50,12 @@ export function openSettings(tab) {
   const nav = h('div', { class: 's-nav' });
   const wrap = h('div', { class: 'settings' }, nav, body);
   const draw = () => {
-    nav.replaceChildren(...[['appearance', '🎨 Aparência'], ['agents', '🤖 Agentes'], ['models', '📦 Modelos (Hugging Face)'], ['advanced', '🔧 Avançado']].map(([id, label]) => h('button', { class: tabId === id ? 'on' : '', onclick: () => { tabId = id; draw(); } }, label)));
+    nav.replaceChildren(...[['appearance', '🎨 Aparência'], ['agents', '🤖 Agentes'], ['styles', '🖌 Estilos de arte'], ['models', '📦 Modelos (Hugging Face)'], ['advanced', '🔧 Avançado']].map(([id, label]) => h('button', { class: tabId === id ? 'on' : '', onclick: () => { tabId = id; draw(); } }, label)));
     clearInterval(pollTimer); pollTimer = null;
-    ({ appearance, agents, models, advanced })[tabId]();
+    ({ appearance, agents, styles, models, advanced })[tabId]();
   };
   const m = modal({ title: 'Configurações', size: 'big', body: wrap, onClose: () => { clearInterval(pollTimer); save(); } });
+  handle = m;
   m.body.style.padding = '0'; m.body.style.display = 'flex';
   draw();
 }
@@ -122,6 +125,8 @@ async function agents() {
     tool('stable-diffusion.cpp (sd)', tools.sd, 'Opcional, só para gerar imagens por IA.'),
     tool('Node.js', tools.node, 'Opcional: permite validar a sintaxe do código gerado com mais precisão.'));
 }
+
+function styles() { renderStyles(body, () => handle && handle.close(), applyStyleToProject); }
 
 // ───────── Modelos ─────────
 async function models() {

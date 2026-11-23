@@ -4,6 +4,7 @@
 use super::graph::{NodeSpec, Outcome, Role};
 use super::llm::*;
 use super::{Attachment, Ctx, checks};
+use crate::presets::StylePreset;
 use crate::runtime::{ChatMsg, Task};
 use crate::spec::*;
 use crate::util::*;
@@ -240,12 +241,20 @@ fn apply_simple_edits(spec: &mut GameSpec, prompt: &str, keep_palette: bool) -> 
     changes
 }
 
+fn apply_preset(spec: &mut GameSpec, p: &StylePreset) {
+    spec.palette = p.palette.clone();
+    spec.art_style = p.art_style.clone();
+    spec.style = StyleRef { preset: p.id.clone(), name: p.name.clone(), prompt_suffix: p.prompt_suffix.clone(), negative_prompt: p.negative_prompt.clone() };
+}
+
 async fn director(ctx: &Ctx, node: &NodeSpec) -> Result<Outcome> {
     let prompt = ctx.req.prompt.trim().to_string();
     let hint = ctx.req.genre.as_deref().and_then(Genre::from_id);
     let mut modify = ctx.bb.lock().unwrap().modify;
     let img_paths: Vec<PathBuf> = ctx.attachments.iter().filter(|a| a.decodable()).map(|a| a.abs.clone()).collect();
-    let ref_palette = if img_paths.is_empty() { None } else { procedural::palette_from_images(&img_paths, &Palette::default()) };
+    // A style preset defines the palette; otherwise the colors of attached images do.
+    let ref_palette = if ctx.preset.is_some() || img_paths.is_empty() { None } else { procedural::palette_from_images(&img_paths, &Palette::default()) };
+    let palette_seed = ctx.preset.as_ref().map(|p| p.palette.clone()).or_else(|| ref_palette.clone());
 
     let mut spec: GameSpec = if modify {
         match ctx.read("game.json").and_then(|t| serde_json::from_str::<GameSpec>(&t).ok()) {
@@ -254,11 +263,11 @@ async fn director(ctx: &Ctx, node: &NodeSpec) -> Result<Outcome> {
                 ctx.warn(&node.id, "Não consegui ler o game.json atual; vou recriar o jogo do zero.");
                 modify = false;
                 ctx.bb.lock().unwrap().modify = false;
-                heuristic_spec(&prompt, hint, ref_palette.clone())
+                heuristic_spec(&prompt, hint, palette_seed.clone())
             }
         }
     } else {
-        heuristic_spec(&prompt, hint, ref_palette.clone())
+        heuristic_spec(&prompt, hint, palette_seed.clone())
     };
     let original_genre = spec.genre;
 
@@ -270,6 +279,12 @@ async fn director(ctx: &Ctx, node: &NodeSpec) -> Result<Outcome> {
         }
     }
 
+    // style preset => palette + art style + prompt hints of the game
+    if let Some(p) = &ctx.preset {
+        apply_preset(&mut spec, p);
+        ctx.bb.lock().unwrap().palette_from_refs = true;
+        ctx.log(&node.id, "info", format!("Estilo visual aplicado: “{}” ({}).", p.name, p.art_style));
+    }
     // referências visuais => paleta do jogo
     if let Some(p) = ref_palette {
         spec.palette = p;
@@ -302,6 +317,9 @@ async fn director(ctx: &Ctx, node: &NodeSpec) -> Result<Outcome> {
                 if ctx.bb.lock().unwrap().palette_from_refs {
                     v.as_object_mut().map(|o| o.remove("palette"));
                 }
+                if ctx.preset.is_some() {
+                    v.as_object_mut().map(|o| o.remove("art_style"));
+                }
                 spec = merge_patch(&spec, &v);
                 ctx.log(&node.id, "info", "O modelo refinou o design do jogo.");
             }
@@ -309,6 +327,9 @@ async fn director(ctx: &Ctx, node: &NodeSpec) -> Result<Outcome> {
         }
     }
     spec.genre = hint.unwrap_or(original_genre);
+    if let Some(p) = &ctx.preset {
+        apply_preset(&mut spec, p); // the preset always wins over the model's suggestions
+    }
     fill_defaults(&mut spec);
 
     let md = design_markdown(&spec);
@@ -444,7 +465,7 @@ async fn artist(ctx: &Ctx, node: &NodeSpec) -> Result<Outcome> {
         (bb.modify, req)
     };
     let has_new_imgs = ctx.attachments.iter().any(|a| a.is_image() && a.use_in_game);
-    let regenerate_all = !modify || wants_visual(&ctx.req.prompt) || has_new_imgs;
+    let regenerate_all = !modify || wants_visual(&ctx.req.prompt) || has_new_imgs || ctx.preset.is_some();
     let mut sources = load_sources(ctx);
     let reference = ctx.attachments.iter().find(|a| a.decodable()).map(|a| a.abs.clone());
     let use_ai = !ctx.rt.is_builtin(Task::Image);
@@ -482,9 +503,10 @@ async fn artist(ctx: &Ctx, node: &NodeSpec) -> Result<Outcome> {
         // 2) modelo de imagem
         if ai_ok {
             let style = if matches!(req.kind.as_str(), "sprite" | "item") { ", single object centered on a plain white background, game asset" } else { "" };
-            let prompt = format!("{}, {}{}", req.prompt, spec.art_style, style);
+            let suffix = if spec.style.prompt_suffix.is_empty() { String::new() } else { format!(", {}", spec.style.prompt_suffix) };
+            let prompt = format!("{}, {}{}{}", req.prompt, spec.art_style, suffix, style);
             let tmp = ctx.dir.join(".gameflow/tmp").join(format!("{}.png", req.id));
-            match ctx.rt.generate_image(&prompt, req.w, req.h, &tmp, reference.as_deref()).await {
+            match ctx.rt.generate_image(&prompt, &spec.style.negative_prompt, req.w, req.h, &tmp, reference.as_deref()).await {
                 Ok(true) => {
                     if let Ok(mut img) = image::open(&tmp).map(|i| i.to_rgba8()) {
                         if matches!(req.kind.as_str(), "sprite" | "item" | "portrait") {

@@ -5,6 +5,7 @@ use crate::agents::run::{Envelope, GenerateRequest, RunEvent};
 use crate::agents::{self, Orchestrator};
 use crate::config::{Paths, Settings};
 use crate::hf::{self, Hf};
+use crate::presets::{Presets, StylePreset};
 use crate::projects::{HIDDEN_DIR, META_FILE, Projects};
 use crate::runtime::{Runtimes, Task};
 use crate::spec::{Genre, theme_ids};
@@ -37,6 +38,7 @@ pub struct AppState {
     pub projects: Projects,
     pub rt: Arc<Runtimes>,
     pub hf: Hf,
+    pub presets: Presets,
     pub orch: Arc<Orchestrator>,
     pub play_port: RwLock<u16>,
     pub port: RwLock<u16>,
@@ -52,8 +54,9 @@ pub fn build_state(paths: Paths) -> anyhow::Result<S> {
     let projects = Projects::new(paths.projects.clone());
     let rt = Arc::new(Runtimes::new(paths.clone(), settings.clone()));
     let hf = Hf::new(paths.clone(), settings.clone());
-    let orch = Orchestrator::new(projects.clone(), rt.clone(), settings.clone());
-    Ok(Arc::new(AppState { paths, settings, projects, rt, hf, orch, play_port: RwLock::new(0), port: RwLock::new(0) }))
+    let presets = Presets::new(paths.presets.clone());
+    let orch = Orchestrator::new(projects.clone(), rt.clone(), settings.clone(), presets.clone());
+    Ok(Arc::new(AppState { paths, settings, projects, rt, hf, presets, orch, play_port: RwLock::new(0), port: RwLock::new(0) }))
 }
 
 // ───────────────────────── erros ─────────────────────────
@@ -138,7 +141,11 @@ pub fn router(st: S) -> Router {
         .route("/downloads", get(downloads).delete(clear_downloads))
         .route("/downloads/cancel", post(cancel_download))
         .route("/models", get(local_models).delete(delete_model))
-        .route("/agents/test", post(agent_test));
+        .route("/agents/test", post(agent_test))
+        .route("/presets", get(list_presets).post(import_preset))
+        .route("/presets/{id}", axum::routing::delete(delete_preset))
+        .route("/presets/{id}/export", get(export_preset))
+        .route("/projects/{id}/preset-save", post(save_project_preset));
     Router::new().nest("/api", api).fallback(static_files).layer(middleware::from_fn(guard)).with_state(st)
 }
 
@@ -537,6 +544,47 @@ async fn agent_test(State(st): State<S>, Json(b): Json<TestBody>) -> R<Json<Valu
         Ok(m) => json!({"ok": true, "message": m}),
         Err(e) => json!({"ok": false, "message": format!("{e:#}")}),
     }))
+}
+
+// ───────────────────────── style presets ─────────────────────────
+
+async fn list_presets(State(st): State<S>) -> Json<Value> {
+    Json(json!(st.presets.list()))
+}
+
+/// Body = the raw contents of a `.gfstyle.json` file.
+async fn import_preset(State(st): State<S>, body: String) -> R<Json<Value>> {
+    Ok(Json(json!(st.presets.import_text(&body)?)))
+}
+
+async fn delete_preset(State(st): State<S>, Path(id): Path<String>) -> R<Json<Value>> {
+    st.presets.delete(&id)?;
+    Ok(Json(json!({"ok": true})))
+}
+
+async fn export_preset(State(st): State<S>, Path(id): Path<String>) -> R<Response> {
+    let p = st.presets.get(&id).ok_or_else(|| not_found("estilo não encontrado"))?;
+    Ok(Response::builder()
+        .header(header::CONTENT_TYPE, "application/json")
+        .header(header::CONTENT_DISPOSITION, format!("attachment; filename=\"{}{}\"", p.id, crate::presets::FILE_SUFFIX))
+        .body(Body::from(p.to_file_json()))
+        .unwrap())
+}
+
+#[derive(Deserialize)]
+struct SavePreset {
+    name: String,
+    #[serde(default)]
+    description: String,
+}
+
+/// Captures the look (art style + palette + prompt hints) of a project into the library.
+async fn save_project_preset(State(st): State<S>, Path(id): Path<String>, Json(b): Json<SavePreset>) -> R<Json<Value>> {
+    let dir = st.projects.dir(&id).ok_or_else(|| not_found("projeto não encontrado"))?;
+    let text = std::fs::read_to_string(dir.join("game.json")).map_err(|_| ApiError(StatusCode::BAD_REQUEST, "este projeto ainda não tem um jogo gerado".into()))?;
+    let spec: crate::spec::GameSpec = serde_json::from_str(&text).map_err(|e| ApiError(StatusCode::BAD_REQUEST, format!("game.json inválido: {e}")))?;
+    let p = StylePreset::from_spec(&spec, &b.name, &b.description)?;
+    Ok(Json(json!(st.presets.save(p)?)))
 }
 
 // ───────────────────────── servidor de jogos (origem isolada) ─────────────────────────

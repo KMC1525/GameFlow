@@ -1,8 +1,9 @@
 // Cliente da API local do GameFlow.
 
-export async function api(path, { method = 'GET', body, form } = {}) {
+export async function api(path, { method = 'GET', body, form, raw } = {}) {
   const opt = { method, headers: {} };
   if (body !== undefined) { opt.headers['Content-Type'] = 'application/json'; opt.body = JSON.stringify(body); }
+  if (raw !== undefined) { opt.headers['Content-Type'] = 'application/json'; opt.body = raw; }
   if (form) opt.body = form;
   let r;
   try { r = await fetch('/api' + path, opt); } catch (e) { throw new Error('Não consegui falar com o GameFlow (o programa ainda está rodando no terminal?)'); }

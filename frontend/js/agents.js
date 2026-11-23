@@ -5,11 +5,12 @@ import { h, $, toast } from './ui.js';
 import { Pipeline } from './pipeline.js';
 import { upload as uploadToProject, loadTree } from './explorer.js';
 import { openPreview, refreshOpenFiles, reloadPreview } from './editor.js';
+import { importPresetText, refreshPresets, fillPresetSelect } from './presets.js';
 import { refreshProject } from './explorer.js';
 
 let attachments = []; // { path, name, mode: 'reference'|'use', thumb }
 let modeSel = 'auto';  // auto | create | modify
-let chat, promptEl, sendBtn, stopBtn, genreSel;
+let chat, promptEl, sendBtn, stopBtn, genreSel, presetSel;
 
 export const EXAMPLES = [
   'Um RPG 2D de fantasia numa floresta mágica, com um dragão como chefe final',
@@ -21,8 +22,12 @@ export const EXAMPLES = [
 ];
 
 export function init() {
-  chat = $('#chat'); promptEl = $('#prompt'); sendBtn = $('#btnSend'); stopBtn = $('#btnStop'); genreSel = $('#genreSelect');
+  chat = $('#chat'); promptEl = $('#prompt'); sendBtn = $('#btnSend'); stopBtn = $('#btnStop'); genreSel = $('#genreSelect'); presetSel = $('#presetSelect');
   genreSel.replaceChildren(h('option', { value: '' }, 'Gênero: automático'), ...S.info.genres.map((g) => h('option', { value: g.id }, g.label)));
+  fillPresetSelect(presetSel);
+  bus.on('presets-changed', () => fillPresetSelect(presetSel));
+  bus.on('select-preset', (id) => { fillPresetSelect(presetSel, id); });
+  refreshPresets();
   sendBtn.onclick = send;
   stopBtn.onclick = stop;
   promptEl.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); } });
@@ -86,6 +91,10 @@ function renderMode() {
 
 // ───────── anexos ─────────
 async function addFiles(files) {
+  const presetFiles = files.filter((f) => /\.json$/i.test(f.name));
+  for (const f of presetFiles) await importPresetText(await f.text(), true);
+  files = files.filter((f) => !presetFiles.includes(f));
+  if (!files.length) return;
   if (!S.project) return toast('Abra um projeto primeiro.', 'bad');
   const ok = files.filter((f) => /^(image|audio)\//.test(f.type) || /\.(png|jpe?g|gif|webp|svg|wav|mp3|ogg|m4a)$/i.test(f.name));
   if (ok.length < files.length) toast('Só imagens e sons podem ser anexados.', 'bad');
@@ -117,13 +126,28 @@ async function send() {
   const prompt = promptEl.value.trim();
   if (!prompt || !S.project || S.running) return;
   const mode = S.project.generated ? (modeSel === 'create' ? 'create' : 'modify') : 'create';
-  const body = { prompt, genre: genreSel.value || 'auto', mode, attachments: attachments.map((a) => ({ path: a.path, mode: a.mode })) };
+  const body = { prompt, genre: genreSel.value || 'auto', mode, preset: presetSel.value || null, attachments: attachments.map((a) => ({ path: a.path, mode: a.mode })) };
+  if (await startRun(body, prompt, attachments.map((a) => a.path))) {
+    promptEl.value = ''; attachments = []; renderChips();
+    presetSel.value = ''; // the style is now saved in the project; do not re-apply it on every edit
+  }
+}
+
+async function startRun(body, shownText, attachedPaths = []) {
   let r;
-  try { r = await api(`/projects/${S.project.id}/generate`, { method: 'POST', body }); } catch (e) { return toast(e.message, 'bad'); }
+  try { r = await api(`/projects/${S.project.id}/generate`, { method: 'POST', body }); } catch (e) { toast(e.message, 'bad'); return false; }
   if (chat.querySelector('.example-chips')) chat.replaceChildren();
-  addMessage('user', prompt, { attachments: attachments.map((a) => a.path) });
-  promptEl.value = ''; attachments = []; renderChips();
+  addMessage('user', shownText, { attachments: attachedPaths });
   follow(r.run_id, S.project.id, false);
+  return true;
+}
+
+/** Applies a library style to the open project (edit mode: restyles palette, shell and generated art). */
+export async function applyStyleToProject(preset) {
+  if (!S.project) return toast('Abra um projeto primeiro.', 'bad');
+  if (S.running) return toast('Aguarde a geração atual terminar.', 'bad');
+  if (!S.project.generated) { bus.emit('select-preset', preset.id); return toast(`Estilo “${preset.name}” escolhido para a próxima geração. Descreva o jogo e clique em Gerar.`, 'ok', 5000); }
+  return startRun({ prompt: `Aplicar estilo visual: ${preset.name}`, genre: 'auto', mode: 'modify', preset: preset.id, attachments: [] }, `🎨 Aplicar estilo: ${preset.name}`);
 }
 
 function follow(runId, projectId, resumed) {
