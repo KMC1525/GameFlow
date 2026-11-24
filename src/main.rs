@@ -1,5 +1,6 @@
 #![allow(clippy::collapsible_if, clippy::collapsible_match, clippy::too_many_arguments, clippy::type_complexity, clippy::needless_range_loop)]
 
+mod adventure;
 mod agents;
 mod config;
 mod hf;

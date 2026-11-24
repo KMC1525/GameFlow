@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.3.0
+
+### Added
+- **Text adventures** — a new genre (*Aventura de Texto* / `text_adventure`): classic interactive fiction that runs on the web.
+  - DOM-based engine with a Portuguese/English parser (look, go, take, drop, examine, read, use, open, talk, give, inventory, hint, save, load, restart, shortcuts), clickable items/people/exits, command history, autosave with *Continue*, room illustrations, sound, adjustable font size.
+  - Procedural generator (9 themes, 7–11 rooms by difficulty) with a guaranteed puzzle chain and a built-in walkthrough; `docs/walkthrough.md` documents the solution and map for the author.
+  - World validator (references, locks, reachability fixpoint) used by the Tester agent, so hand-edited and AI-edited worlds are checked on every run.
+  - With a text model, the Writer polishes names/descriptions/dialogue/intro/ending while the structure, item/people names, the key trade and the clue are protected.
+  - `js/custom.js` hooks: `GF.on('command' | 'enter' | 'event' | 'start')`.
+  - Tests replay the walkthrough in the real engine (Node) for 36 generated worlds (pt/en, 3 difficulties), and the browser smoke test beats an adventure by typing its walkthrough.
+
+### Changed
+- The Architect keeps an existing world instead of regenerating it unless a new map is requested.
+- The Tester checks for the terminal element (instead of a `<canvas>`) on text adventures.
+
 ## 0.2.0
 
 ### Added

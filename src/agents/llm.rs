@@ -84,7 +84,7 @@ pub fn allowed_features(genre: Genre) -> &'static [&'static str] {
         Genre::Rpg2d | Genre::Rpg3d => &["boss"],
         Genre::Fps | Genre::Tps => &["waves"],
         Genre::Arcade => &["spread_shot", "shield", "boss"],
-        Genre::VisualNovel => &[],
+        Genre::VisualNovel | Genre::TextAdventure => &[],
     }
 }
 
@@ -183,6 +183,45 @@ pub fn allowed_write_path(rel: &str) -> bool {
     }
     let is_js = r.starts_with("js/") && r.ends_with(".js") && r.matches('/').count() == 1;
     is_js || r == "style.css" || r == "index.html" || r == "game.json"
+}
+
+pub fn adventure_writer_system(lang: &str) -> String {
+    format!(
+        r##"Você é o Roteirista de uma aventura de texto (ficção interativa). Reescreva os textos da aventura com mais atmosfera e humor, SEM mudar a estrutura.
+Responda SOMENTE com JSON válido, usando os MESMOS ids recebidos:
+{{
+ "intro": "abertura (até 400 caracteres)",
+ "win_text": "final feliz; mantenha o marcador {{moves}} exatamente assim",
+ "rooms": [{{"id":"r1","name":"novo nome da sala","desc":"descrição em 1 a 3 frases"}}],
+ "items": [{{"id":"...","desc":"descrição curta"}}],
+ "npcs": [{{"id":"...","desc":"descrição curta","talk":["fala 1","fala 2"]}}]
+}}
+Regras: não invente ids; não renomeie itens nem personagens (só descrições); não revele a solução do enigma nas descrições. Idioma: {}."##,
+        if lang == "en" { "inglês" } else { "português do Brasil" }
+    )
+}
+
+pub const ENGINEER_SYSTEM_TA: &str = r##"Você é um programador sênior de jogos web em JavaScript. O jogo é uma AVENTURA DE TEXTO que já funciona (gerada de um template). Seu trabalho é adicionar comandos, eventos ou regras conforme o pedido.
+
+API disponível em js/custom.js (carregado depois do motor):
+- GF.on('command', (texto, estado) => string|undefined)  // devolva um texto para tratar o comando você mesmo; undefined deixa o motor seguir
+- GF.on('enter', (idDaSala, estado) => {})                // ao entrar numa sala
+- GF.on('event', (nome, dados) => {})                     // 'take','drop','unlock','give','talk','move','win'
+- GF.on('start', () => {})
+- GF.game  // estado: { room, inv: [ids], flags: {}, moves, won, roomItems: {salaId: [ids]} }
+- GF.world // salas, itens e personagens (do game.json)
+- GF.print('texto', 'ok'|'warn'|'sys'|'npc'|'text')       // escreve no terminal
+- GF.play('coin') // toca um som; GF.lang é 'pt' ou 'en'
+
+Formato OBRIGATÓRIO da resposta (um bloco por arquivo, conteúdo COMPLETO, sem explicações fora dos blocos):
+<<<FILE js/custom.js>>>
+...código...
+<<<END>>>
+
+Regras: JavaScript puro, sem bibliotecas, sem import/export, sem rede. Não altere o mapa nem remova funcionalidades. Código curto, comentado em português."##;
+
+pub fn engineer_system(genre: Genre) -> &'static str {
+    if genre == Genre::TextAdventure { ENGINEER_SYSTEM_TA } else { ENGINEER_SYSTEM }
 }
 
 #[cfg(test)]

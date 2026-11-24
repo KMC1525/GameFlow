@@ -350,7 +350,13 @@ async fn writer(ctx: &Ctx, node: &NodeSpec) -> Result<Outcome> {
         return Ok(Outcome { detail: Some("sem mudanças".into()), ..Default::default() });
     }
     if ctx.rt.is_builtin(Task::Text) {
-        let detail = if spec.genre == Genre::VisualNovel { format!("{} cenas de roteiro", spec.story.len()) } else { format!("{} NPCs, missão “{}”", spec.npcs.len(), spec.quest.title) };
+        let detail = if spec.genre == Genre::TextAdventure {
+            format!("{} salas", spec.world.get("rooms").and_then(|r| r.as_array()).map(|a| a.len()).unwrap_or(0))
+        } else if spec.genre == Genre::VisualNovel {
+            format!("{} cenas de roteiro", spec.story.len())
+        } else {
+            format!("{} NPCs, missão “{}”", spec.npcs.len(), spec.quest.title)
+        };
         ctx.log(&node.id, "info", format!("Textos gerados pelo gerador embutido ({detail}). Configure um modelo de texto para histórias mais ricas."));
         return Ok(Outcome { detail: Some(detail), ..Default::default() });
     }
@@ -375,6 +381,18 @@ async fn writer(ctx: &Ctx, node: &NodeSpec) -> Result<Outcome> {
                 }
                 Some(n) => ctx.warn(&node.id, format!("O roteiro do modelo tinha problemas ({}); mantive o roteiro embutido.", story::validate(&n).into_iter().take(2).collect::<Vec<_>>().join("; "))),
                 None => ctx.warn(&node.id, "O modelo não devolveu um roteiro válido; mantive o roteiro embutido."),
+            }
+        }
+    } else if spec.genre == Genre::TextAdventure {
+        let user = format!("{brief}\nPedido atual: {}\nTextos atuais da aventura (JSON):\n{}", ctx.req.prompt, crate::adventure::text_snapshot(&spec.world));
+        if let Some(text) = ask(ctx, &node.id, Task::Text, adventure_writer_system(&spec.lang), user, 4500).await {
+            match extract_json(&text) {
+                Some(v) if v.is_object() => {
+                    let mut changed = 0;
+                    ctx.update_spec(|s| changed = crate::adventure::merge_texts(&mut s.world, &v));
+                    ctx.log(&node.id, "info", format!("Textos da aventura reescritos pelo modelo ({changed} trechos); o mapa e o enigma foram preservados."));
+                }
+                _ => ctx.warn(&node.id, "O modelo não devolveu JSON válido; mantive os textos embutidos."),
             }
         }
     } else {
@@ -419,9 +437,13 @@ async fn architect(ctx: &Ctx, node: &NodeSpec) -> Result<Outcome> {
             }
         }
     }
-    let regen = !modify || spec.world.is_null() || wants_new_map(&ctx.req.prompt);
-    let new_seed = if modify && wants_new_map(&ctx.req.prompt) { spec.seed.wrapping_add(1) } else { spec.seed };
-    let world = if regen {
+    let is_ta = spec.genre == Genre::TextAdventure;
+    let want_new = modify && wants_new_map(&ctx.req.prompt);
+    // In create mode the world is empty here (except for text adventures, whose world is part of the design and may
+    // already have been polished by the writer) — so only (re)generate when missing or explicitly requested.
+    let regen = spec.world.is_null() || want_new;
+    let new_seed = if want_new { spec.seed.wrapping_add(1) } else { spec.seed };
+    let new_world: Option<Value> = if regen {
         let mut s = spec.clone();
         s.seed = new_seed;
         let w = levelgen::generate_world(&s);
@@ -431,21 +453,42 @@ async fn architect(ctx: &Ctx, node: &NodeSpec) -> Result<Outcome> {
             match spec.genre {
                 Genre::VisualNovel => "Gênero narrativo: sem mapas, apenas roteiro.".to_string(),
                 Genre::Arcade => "Ondas de inimigos configuradas.".to_string(),
+                Genre::TextAdventure => "Mapa da aventura gerado (salas, itens, enigma e passo a passo).".to_string(),
                 _ => "Mapas/fases gerados proceduralmente (editáveis em game.json → world).".to_string(),
             },
         );
-        w
+        Some(w)
     } else {
-        ctx.log(&node.id, "info", "Mapas existentes mantidos.");
-        spec.world.clone()
+        ctx.log(&node.id, "info", if is_ta { "Mundo da aventura mantido." } else { "Mapas existentes mantidos." });
+        None
     };
     ctx.update_spec(|s| {
         s.features = features.clone();
-        s.world = world;
         s.seed = new_seed;
+        if let Some(w) = new_world {
+            s.world = w;
+            if is_ta {
+                s.assets.clear();
+                fill_defaults(s); // one illustration per room of the new map
+            }
+        }
     });
+    if is_ta {
+        let w = ctx.spec().world;
+        let problems = crate::adventure::validate(&w);
+        if !problems.is_empty() {
+            ctx.warn(&node.id, format!("O mundo da aventura tem problemas: {}", problems.iter().take(2).cloned().collect::<Vec<_>>().join("; ")));
+        }
+        ctx.write("docs/walkthrough.md", crate::adventure::walkthrough_markdown(&w, &spec.lang).as_bytes())?;
+    }
+    let engine_files = if is_ta {
+        "`index.html`, `style.css`, `game.json` (salas, itens, personagens, dicas — editável), `js/game.js` (motor e parser), `js/custom.js` (seus ajustes), `js/data.js` (gerado a partir do game.json)"
+    } else {
+        "`index.html`, `style.css`, `game.json` (conteúdo editável), `js/gameflow.js` (mini-engine), `js/game.js` (lógica), `js/custom.js` (seus ajustes), `js/data.js` (gerado a partir do game.json)"
+    };
+    let hooks = if is_ta { "`GF.on('start'|'enter'|'event'|'command', fn)`" } else { "`GF.on('start'|'update'|'draw'|'event', fn)`" };
     let md = format!(
-        "# Arquitetura\n\n- Gênero: **{}**\n- Arquivos: `index.html`, `style.css`, `game.json` (conteúdo editável), `js/gameflow.js` (mini-engine), `js/game.js` (lógica), `js/custom.js` (seus ajustes), `js/data.js` (gerado a partir do game.json).\n- Recursos ativos: {}\n- Pontos de extensão em `js/custom.js`: `GF.on('start'|'update'|'draw'|'event', fn)`.\n\n{}\n",
+        "# Arquitetura\n\n- Gênero: **{}**\n- Arquivos: {engine_files}.\n- Recursos ativos: {}\n- Pontos de extensão em `js/custom.js`: {hooks}.\n\n{}\n",
         spec.genre.label(),
         if features.is_empty() { "nenhum".to_string() } else { features.join(", ") },
         notes
@@ -736,7 +779,7 @@ async fn engineer(ctx: &Ctx, node: &NodeSpec) -> Result<Outcome> {
     let mut user = format!("Pedido do usuário: {}\n\n{}", prompt, engineer_context(&spec, &ctx_files, &issues));
     let mut written: Vec<String> = vec![];
     for attempt in 0..2 {
-        let Some(text) = ask(ctx, &node.id, Task::Code, ENGINEER_SYSTEM.to_string(), user.clone(), 6000).await else { break };
+        let Some(text) = ask(ctx, &node.id, Task::Code, engineer_system(spec.genre).to_string(), user.clone(), 6000).await else { break };
         let blocks = parse_file_blocks(&text);
         if blocks.is_empty() {
             ctx.warn(&node.id, "O modelo de código não devolveu arquivos no formato esperado.");
@@ -884,7 +927,11 @@ async fn tester(ctx: &Ctx, node: &NodeSpec) -> Result<Outcome> {
     match ctx.read("index.html") {
         None => issues.push("index.html|arquivo ausente".into()),
         Some(html) => {
-            if !html.contains("<canvas") {
+            if spec.genre == Genre::TextAdventure {
+                if !html.contains("id=\"terminal\"") {
+                    issues.push("index.html|não há o elemento #terminal da aventura de texto".into());
+                }
+            } else if !html.contains("<canvas") {
                 issues.push("index.html|não há elemento <canvas>".into());
             }
             for r in checks::html_local_refs(&html) {
@@ -1018,6 +1065,10 @@ fn world_problem(g: &GameSpec) -> Option<String> {
             let r = rows(&g.world["rows"]);
             if r.is_empty() || !r.concat().contains('P') { Some("o mapa (world.rows) precisa de um 'P' para o início do jogador".into()) } else { None }
         }
+        Genre::TextAdventure => {
+            let p = crate::adventure::validate(&g.world);
+            if p.is_empty() { None } else { Some(p.into_iter().take(3).collect::<Vec<_>>().join("; ")) }
+        }
         Genre::Platformer3d => g.world.get("platforms").and_then(|p| p.as_array()).filter(|p| p.len() >= 2).map(|_| None).unwrap_or(Some("world.platforms precisa de ao menos 2 plataformas".into())),
         _ => None,
     }
@@ -1036,6 +1087,7 @@ async fn publisher(ctx: &Ctx, node: &NodeSpec) -> Result<Outcome> {
         Genre::Fps => "controls_fps",
         Genre::Tps => "controls_tps",
         Genre::Arcade => "controls_arcade",
+        Genre::TextAdventure => "controls_ta",
     };
     let controls = spec.ui.get(controls_key).cloned().unwrap_or_default();
     let readme = if en {

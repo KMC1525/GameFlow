@@ -21,6 +21,7 @@ pub fn generate_world(spec: &GameSpec) -> Value {
         Genre::Tps => tps(&mut rng, diff),
         Genre::Arcade => json!({ "waves": 8 + diff * 2 }),
         Genre::VisualNovel => Value::Null,
+        Genre::TextAdventure => crate::adventure::generate(spec),
     }
 }
 

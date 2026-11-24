@@ -19,6 +19,7 @@ export const EXAMPLES = [
   'FPS em primeira pessoa num castelo assombrado',
   'Jogo de nave arcade com chefe e escudo',
   'Plataforma 3D num vulcão cheio de lava',
+  'Aventura de texto num castelo assombrado, com um enigma da chave',
 ];
 
 export function init() {

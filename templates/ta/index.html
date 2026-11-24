@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="{{LANG}}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{TITLE}}</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div id="ta">
+    <div id="cover" class="cover">
+      <div class="cover-card">
+        <h1>{{TITLE}}</h1>
+        <p class="tag">{{TAGLINE}}</p>
+        <div class="cover-actions">
+          <button id="btnStart" class="primary" type="button"></button>
+          <button id="btnContinue" type="button" hidden></button>
+        </div>
+        <p id="coverHint" class="hint"></p>
+      </div>
+    </div>
+    <header class="bar">
+      <span id="gameTitle" class="title">{{TITLE}}</span>
+      <span class="grow"></span>
+      <button id="btnMute" type="button" title="♪">♪</button>
+      <button id="btnFontDown" type="button" title="A−">A−</button>
+      <button id="btnFontUp" type="button" title="A+">A+</button>
+      <button id="btnRestart" type="button" title="↺">↺</button>
+    </header>
+    <main>
+      <figure id="banner" hidden><img id="bannerImg" alt=""></figure>
+      <div id="terminal" role="log" aria-live="polite"></div>
+    </main>
+    <nav id="exits"></nav>
+    <div id="quick"></div>
+    <form id="form" autocomplete="off">
+      <span class="prompt">&gt;</span>
+      <input id="input" type="text" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" aria-label="command">
+      <button type="submit" id="btnSend" aria-label="enter">↵</button>
+    </form>
+  </div>
+{{SCRIPTS}}
+</body>
+</html>
