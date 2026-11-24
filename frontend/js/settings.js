@@ -6,11 +6,11 @@ import { renderTab as renderStyles } from './presets.js';
 import { applyStyleToProject } from './agents.js';
 
 export const THEMES = [
-  { id: 'grafite', name: 'Grafite', desc: 'Cinza escuro e azul suave (padrão)', c: ['#23262b', '#2a2e34', '#6f9ed8'] },
-  { id: 'nevoa', name: 'Névoa', desc: 'Cinza médio, menos contraste', c: ['#3a3f47', '#424852', '#82b3ea'] },
-  { id: 'ardosia', name: 'Ardósia', desc: 'Bem escuro, ótimo à noite', c: ['#1a1c20', '#202328', '#6a9bd6'] },
-  { id: 'crepusculo', name: 'Crepúsculo', desc: 'Cinza-azulado', c: ['#262b36', '#2d3340', '#7aa7de'] },
-  { id: 'papel', name: 'Papel', desc: 'Cinza claro, para ambientes iluminados', c: ['#e3e5e9', '#eceef1', '#3a74bd'] },
+  { id: 'grafite', name: 'Grafite', desc: 'Cinza-grafite suave, igual ao OpenFlow (padrão)', c: ['#1e1f22', '#25262a', '#e8e8ea'] },
+  { id: 'nevoa', name: 'Névoa', desc: 'Cinza médio, menos contraste', c: ['#2b2c31', '#33343a', '#f0f0f2'] },
+  { id: 'ardosia', name: 'Ardósia', desc: 'Bem escuro, ótimo à noite', c: ['#151618', '#1b1c1f', '#e2e2e5'] },
+  { id: 'crepusculo', name: 'Crepúsculo', desc: 'Cinza-azulado', c: ['#1f2128', '#262932', '#e4e6ee'] },
+  { id: 'papel', name: 'Claro', desc: 'Claro e limpo, para ambientes iluminados', c: ['#f6f6f4', '#ffffff', '#17171a'] },
 ];
 
 export function applyAppearance() {
@@ -74,7 +74,7 @@ function appearance() {
   const fsize = h('input', { type: 'range', min: '10', max: '26', step: '1', value: String(s.editor_font_size), oninput: (e) => { s.editor_font_size = +e.target.value; fpct.textContent = e.target.value + ' px'; commit(); } });
   const presets = [['Pequeno', 90], ['Normal', 100], ['Grande', 125], ['Extra grande', 150]].map(([n, v]) => h('button', { class: 'btn', onclick: () => { s.ui_scale = v / 100; commit(); appearance(); } }, n));
   body.replaceChildren(
-    h('h3', {}, 'Tema'), h('p', { class: 'help' }, 'Todos os temas usam cinzas suaves e azul dessaturado, pensados para sessões longas sem cansar a vista.'), h('div', { class: 'themes' }, cards),
+    h('h3', {}, 'Tema'), h('p', { class: 'help' }, 'Os temas escuros usam cinza-grafite suave com acento neutro (o mesmo visual do OpenFlow), pensados para sessões longas sem cansar a vista; o tema Claro é o oposto, para ambientes iluminados.'), h('div', { class: 'themes' }, cards),
     h('h3', {}, 'Tamanho da interface'), h('div', { class: 'range-row' }, scale, pct), h('div', { class: 'row-flex', style: { marginTop: '.6rem' } }, presets),
     h('h3', {}, 'Tamanho da letra do editor'), h('div', { class: 'range-row' }, fsize, fpct));
 }

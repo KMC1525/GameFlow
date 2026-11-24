@@ -1,6 +1,6 @@
 [package]
 name = "gameflow"
-version = "0.3.0"
+version = "0.4.0"
 edition = "2024"
 description = "GameFlow - IDE low/no-code para criar jogos completos com IA local"
 license = "MIT"

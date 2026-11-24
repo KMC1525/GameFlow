@@ -185,7 +185,7 @@ O GameFlow inicia e gerencia o `llama-server` sozinho. Guia passo a passo em [`d
 
 ### Aparência
 
-Cinzas suaves de baixo brilho com detalhes em **azul dessaturado**, pensados para sessões longas: **Grafite** (padrão), **Névoa**, **Ardósia**, **Crepúsculo** e **Papel** (claro). A **escala da interface** (70–180 %) e o tamanho da letra do editor são ajustáveis; painéis laterais são redimensionáveis.
+Cinza-grafite suave de baixo brilho com acento neutro — o mesmo visual do OpenFlow (cartões arredondados, botões em pílula) —, pensado para sessões longas: **Grafite** (padrão), **Névoa**, **Ardósia**, **Crepúsculo** e **Claro**. A **escala da interface** (70–180 %) e o tamanho da letra do editor são ajustáveis; painéis laterais são redimensionáveis.
 
 ## Como é um projeto gerado
 
@@ -249,7 +249,7 @@ frontend/              interface (HTML/CSS/JS, módulos ES, sem build)
 templates/             jogos-base de cada gênero (HTML/CSS/JS)
 ```
 
-Para publicar uma versão: `git tag v0.3.0 && git push origin v0.3.0` (ou rode o workflow pela aba Actions informando a tag) — o workflow `release.yml` compila para Linux (x86_64/arm64), macOS (Intel/Apple Silicon) e Windows, gera `.tar.gz`/`.zip` com `.sha256` e publica; é isso que `install.sh`, `install.ps1` e `gameflow update` consomem. Veja o [changelog](CHANGELOG.md).
+Para publicar uma versão: `git tag v0.4.0 && git push origin v0.4.0` (ou rode o workflow pela aba Actions informando a tag) — o workflow `release.yml` compila para Linux (x86_64/arm64), macOS (Intel/Apple Silicon) e Windows, gera `.tar.gz`/`.zip` com `.sha256` e publica; é isso que `install.sh`, `install.ps1` e `gameflow update` consomem. Veja o [changelog](CHANGELOG.md).
 
 ## Status e limitações honestas
 
