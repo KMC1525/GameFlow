@@ -307,7 +307,9 @@ mod tests {
             let (ok, summary) = run_and_wait(&st, &meta.id, GenerateRequest { prompt: "um jogo de teste com chefe".into(), genre: Some(g.id().into()), ..Default::default() }).await;
             assert!(ok, "{g:?}: {summary}");
             let dir = st.projects.dir(&meta.id).unwrap();
-            for f in ["index.html", "style.css", "game.json", "js/gameflow.js", "js/game.js", "js/custom.js", "js/data.js", "assets/manifest.json", "README.md", "docs/design.md"] {
+            // text adventures have their own engine (no js/gameflow.js)
+            let engine = if g == Genre::TextAdventure { "docs/walkthrough.md" } else { "js/gameflow.js" };
+            for f in ["index.html", "style.css", "game.json", engine, "js/game.js", "js/custom.js", "js/data.js", "assets/manifest.json", "README.md", "docs/design.md"] {
                 assert!(dir.join(f).is_file(), "{f} ausente em {g:?}");
             }
             // todo asset pedido pela spec existe em disco e está no manifesto
@@ -449,5 +451,37 @@ mod tests {
         // e o estilo do projeto pode ser capturado de volta numa biblioteca nova
         let captured = crate::presets::StylePreset::from_spec(&after, "Capturado", "").unwrap();
         assert_eq!(captured.palette.accent, preset.palette.accent);
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn text_adventure_pipeline_is_clean_and_winnable() {
+        let st = tmp_state();
+        let meta = st.projects.create("ta", None).unwrap();
+        let (ok, summary) = run_and_wait(&st, &meta.id, GenerateRequest { prompt: "Uma aventura de texto num castelo assombrado".into(), ..Default::default() }).await;
+        assert!(ok, "{summary}");
+        assert!(!summary.contains("aviso"), "o testador não deve reclamar de nada: {summary}");
+        let dir = st.projects.dir(&meta.id).unwrap();
+        let spec: crate::spec::GameSpec = serde_json::from_str(&std::fs::read_to_string(dir.join("game.json")).unwrap()).unwrap();
+        assert_eq!(spec.genre, Genre::TextAdventure);
+        assert_eq!(crate::adventure::validate(&spec.world), Vec::<String>::new());
+        let html = std::fs::read_to_string(dir.join("index.html")).unwrap();
+        assert!(html.contains("id=\"terminal\"") && !html.contains("<canvas") && !html.contains("gameflow.js"));
+        // one illustration per room, all on disk and in the manifest
+        let rooms = spec.world["rooms"].as_array().unwrap();
+        for r in rooms {
+            let id = r["id"].as_str().unwrap();
+            assert!(dir.join(format!("assets/images/room_{id}.png")).is_file(), "ilustração de {id}");
+        }
+        // editing: a new map is only generated on request, and the difficulty edit keeps the world
+        let before = spec.world.clone();
+        let (ok, _) = run_and_wait(&st, &meta.id, GenerateRequest { prompt: "deixe mais difícil".into(), ..Default::default() }).await;
+        assert!(ok);
+        let after: crate::spec::GameSpec = serde_json::from_str(&std::fs::read_to_string(dir.join("game.json")).unwrap()).unwrap();
+        assert_eq!(after.world, before);
+        let (ok, _) = run_and_wait(&st, &meta.id, GenerateRequest { prompt: "gere um novo mapa".into(), ..Default::default() }).await;
+        assert!(ok);
+        let regen: crate::spec::GameSpec = serde_json::from_str(&std::fs::read_to_string(dir.join("game.json")).unwrap()).unwrap();
+        assert_ne!(regen.world, before);
+        assert_eq!(crate::adventure::validate(&regen.world), Vec::<String>::new());
     }
 }

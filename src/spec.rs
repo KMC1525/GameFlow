@@ -21,10 +21,11 @@ pub enum Genre {
     Fps,
     Tps,
     Arcade,
+    TextAdventure,
 }
 
 impl Genre {
-    pub const ALL: [Genre; 8] = [Genre::Rpg2d, Genre::Rpg3d, Genre::VisualNovel, Genre::Platformer2d, Genre::Platformer3d, Genre::Fps, Genre::Tps, Genre::Arcade];
+    pub const ALL: [Genre; 9] = [Genre::Rpg2d, Genre::Rpg3d, Genre::VisualNovel, Genre::Platformer2d, Genre::Platformer3d, Genre::Fps, Genre::Tps, Genre::Arcade, Genre::TextAdventure];
 
     pub fn id(self) -> &'static str {
         match self {
@@ -36,6 +37,7 @@ impl Genre {
             Genre::Fps => "fps",
             Genre::Tps => "tps",
             Genre::Arcade => "arcade",
+            Genre::TextAdventure => "text_adventure",
         }
     }
 
@@ -49,6 +51,7 @@ impl Genre {
             Genre::Fps => "Tiro em 1ª pessoa (3D)",
             Genre::Tps => "Ação em 3ª pessoa (3D)",
             Genre::Arcade => "Arcade (nave)",
+            Genre::TextAdventure => "Aventura de Texto",
         }
     }
 
@@ -66,6 +69,12 @@ impl Genre {
 pub fn detect_genre(prompt: &str) -> Genre {
     let p = normalize(prompt);
     let has3d = p.contains("3d") || has_any(&p, &["tridimensional"]);
+    if has_any(
+        &p,
+        &["aventura de texto", "aventuras de texto", "aventura textual", "jogo de texto", "text adventure", "text-based", "interactive fiction", "ficcao interativa", "zork", "mud ", "parser"],
+    ) {
+        return Genre::TextAdventure;
+    }
     if has_any(&p, &["visual novel", "novel visual", "dating sim", "otome", "historia interativa", "romance interativo", "livro-jogo", "livro jogo"]) {
         return Genre::VisualNovel;
     }
@@ -616,6 +625,8 @@ fn default_mechanics(genre: Genre, lang: &str) -> Vec<String> {
         (Genre::Fps, false) | (Genre::Tps, false) => vec!["Atirar", "Sobreviver", "Pegar vida e munição", "Escapar"],
         (Genre::Fps, true) | (Genre::Tps, true) => vec!["Shoot", "Survive", "Pick up health and ammo", "Escape"],
         (Genre::Arcade, false) => vec!["Pilotar a nave", "Atirar", "Desviar", "Coletar power-ups"],
+        (Genre::TextAdventure, false) => vec!["Explorar salas", "Pegar e trocar itens", "Conversar com personagens", "Resolver o enigma da chave", "Digitar comandos ou clicar nas palavras"],
+        (Genre::TextAdventure, true) => vec!["Explore rooms", "Pick up and trade items", "Talk to characters", "Solve the key puzzle", "Type commands or click the words"],
         (Genre::Arcade, true) => vec!["Fly the ship", "Shoot", "Dodge", "Collect power-ups"],
     };
     v.into_iter().map(String::from).collect()
@@ -647,6 +658,9 @@ pub fn fill_defaults(spec: &mut GameSpec) {
     }
     if spec.genre == Genre::VisualNovel && spec.story.is_empty() {
         spec.story = crate::story::generate(spec);
+    }
+    if spec.genre == Genre::TextAdventure && spec.world.is_null() {
+        spec.world = crate::adventure::generate(spec);
     }
     // Remove duplicatas mantendo a ordem (a IA às vezes repete ids)
     spec.features.dedup();
@@ -731,6 +745,19 @@ pub fn default_assets(spec: &GameSpec) -> Vec<AssetReq> {
             v.push(a("logo", "item", format!("{} title logo", spec.title), 64, 64));
             v
         }
+        Genre::TextAdventure => {
+            // one illustration per room (the world is generated before the assets list is built)
+            let rooms = spec.world.get("rooms").and_then(|r| r.as_array()).cloned().unwrap_or_default();
+            rooms
+                .iter()
+                .take(14)
+                .filter_map(|r| {
+                    let id = r.get("id")?.as_str()?;
+                    let name = r.get("name")?.as_str()?;
+                    Some(a(&format!("room_{id}"), "background", format!("{name}, {th}, scene illustration, wide banner, {st}"), 640, 240))
+                })
+                .collect()
+        }
         Genre::Fps => vec![
             a("wall1", "texture", format!("{} wall texture, seamless, {}", th, st), 64, 64),
             a("wall2", "texture", format!("{} brick wall texture, seamless, {}", th, st), 64, 64),
@@ -782,7 +809,7 @@ pub fn default_sounds(genre: Genre) -> Vec<SoundReq> {
         s("lose", "sfx", "sad defeat jingle"),
     ];
     match genre {
-        Genre::VisualNovel => {
+        Genre::VisualNovel | Genre::TextAdventure => {
             v.push(s("blip", "sfx", "tiny text blip"));
             v.push(s("choice", "sfx", "soft menu select"));
         }
@@ -842,6 +869,13 @@ pub fn ui_strings(lang: &str) -> BTreeMap<String, String> {
         ("controls_platformer", ("←/→ ou A/D: mover • ESPAÇO/↑: pular • M: som • P: pausa", "←/→ or A/D: move • SPACE/↑: jump • M: sound • P: pause")),
         ("controls_fps", ("WASD: mover • Mouse: olhar • Clique/ESPAÇO: atirar • M: som", "WASD: move • Mouse: look • Click/SPACE: shoot • M: sound")),
         ("controls_tps", ("WASD: mover • ←/→: câmera • ESPAÇO: atirar • SHIFT: correr • M: som", "WASD: move • ←/→: camera • SPACE: shoot • SHIFT: run • M: sound")),
+        (
+            "controls_ta",
+            (
+                "Digite comandos (olhar, ir norte, pegar chave, falar com…, dar X para Y, ajuda) ou clique nas palavras destacadas • ↑/↓ histórico",
+                "Type commands (look, go north, take key, talk to…, give X to Y, help) or click the highlighted words • ↑/↓ history",
+            ),
+        ),
         ("controls_arcade", ("←/→/↑/↓ ou WASD: mover • ESPAÇO: atirar • M: som", "←/→/↑/↓ or WASD: move • SPACE: shoot • M: sound")),
     ]);
     for (k, (pt, en)) in controls {
@@ -911,7 +945,7 @@ mod tests {
         for g in Genre::ALL {
             let s = heuristic_spec("Um jogo no deserto com chefe", Some(g), None);
             assert!(!s.title.is_empty());
-            assert!(s.assets.iter().any(|a| a.id.contains("player") || a.id.starts_with("char") || a.id.starts_with("wall")), "{:?}", g);
+            assert!(s.assets.iter().any(|a| a.id.contains("player") || a.id.starts_with("char") || a.id.starts_with("wall") || a.id.starts_with("room_")), "{:?}", g);
             assert!(!s.sounds.is_empty());
             assert_eq!(s.theme, "deserto");
             if g == Genre::VisualNovel {

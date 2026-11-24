@@ -122,8 +122,22 @@ Arquivos importados são validados (formato, versão, tamanho, cores `#rrggbb`) 
 | **FPS (1ª pessoa)** | raycasting | labirintos, munição, vida, mini-mapa |
 | **TPS (3ª pessoa)** | arena 3D | ondas de inimigos, tiro, drops de vida |
 | **Arcade** | nave | ondas, power-ups, escudo, chefe final |
+| **Aventura de texto** | terminal web | salas, itens, personagens e um enigma com solução; comandos digitados (português ou inglês) ou palavras e saídas clicáveis; dicas, salvar/continuar |
 
 O gênero é detectado pelo seu texto (ou escolhido no seletor). Os mapas/fases são gerados proceduralmente (determinísticos) e ficam como **texto simples** em `game.json`, então qualquer pessoa pode editá-los à mão.
+
+### Aventuras de texto
+
+Peça com palavras como *"uma aventura de texto num castelo assombrado"* (ou escolha **Aventura de Texto** no seletor de gênero). Você recebe um jogo clássico de ficção interativa que roda no navegador — sem canvas, só texto:
+
+![Uma aventura de texto gerada pelo GameFlow](docs/screenshots/aventura-de-texto.png)
+
+- **Dois jeitos de jogar**: digite comandos (`olhar`, `ir norte`, `pegar chave`, `falar com…`, `dar X para Y`, `usar`, `abrir`, `ler`, `inventário`, `dica`, `salvar`, `reiniciar` — verbos em inglês também funcionam) **ou** clique nos itens, pessoas e saídas destacados. Digite `ajuda` para a lista; ↑/↓ percorrem o histórico.
+- **Sempre dá para vencer**: o gerador monta um mapa conectado com uma cadeia de enigma (achar um presente → trocá-lo com um guardião pela chave → abrir a câmara trancada → levar a relíquia para casa) e um **passo a passo** que os testes automáticos reproduzem no motor real do jogo. O agente Testador revalida o mundo a cada execução — inclusive os editados por IA ou à mão — e avisa sobre salas inalcançáveis, referências quebradas ou objetivo impossível.
+- **Tudo é dado** em `game.json → world`: salas, saídas, trancas, itens, personagens, dicas, abertura e final. Edite os textos à vontade; a solução do autor fica em `docs/walkthrough.md` (spoilers — apague `world.walkthrough` do `game.json` se não quiser distribuí-la).
+- **Com um modelo de texto**, o Roteirista reescreve nomes e descrições de salas, descrições de itens/personagens, abertura e final com mais atmosfera. Ele nunca consegue quebrar o mapa nem o enigma (estrutura, nomes de itens/personagens, a troca da chave e o bilhete com a pista são protegidos).
+- Cada sala ganha uma ilustração (pixel art procedural, suas imagens ou um modelo de imagem), além de trilha e efeitos. Peça *"um novo mapa"* para sortear outra aventura; a dificuldade muda o tamanho do mapa.
+- Estenda em `js/custom.js` com `GF.on('command' | 'enter' | 'event' | 'start', …)` — por exemplo, comandos secretos seus.
 
 ## Os agentes: um fluxo não linear
 
@@ -212,10 +226,10 @@ GF.on('event', (nome, dados) => { if (nome === 'coin') GF.toast('Boa!'); });
 ```bash
 git clone https://github.com/KMC1525/GameFlow && cd GameFlow
 cargo run                       # abre a IDE (em debug, lê frontend/ e templates/ do disco)
-cargo test                      # 50+ testes: geradores, agentes, grafo, projetos, estilos, atualização, segurança
+cargo test                      # 55+ testes (os de aventura de texto reproduzem o passo a passo no Node, quando disponível): geradores, agentes, grafo, projetos, estilos, atualização, segurança
 cargo clippy --all-targets -- -D warnings
 npm i playwright && npx playwright install chromium
-node scripts/smoke-games.js     # gera e "joga" os 8 gêneros no Chromium, falha com qualquer erro de JS
+node scripts/smoke-games.js     # gera e "joga" os 9 gêneros no Chromium (inclusive vence a aventura de texto digitando o passo a passo), falha com qualquer erro de JS
 ```
 
 ```
@@ -228,17 +242,18 @@ src/
 ├── presets.rs         estilos visuais: formato, validação, biblioteca, embutidos
 ├── spec.rs            "contrato" do jogo (game.json), gêneros, temas, heurística de prompt
 ├── levelgen.rs        mapas e fases procedurais · story.rs roteiros ramificados
+├── adventure.rs       aventuras de texto: modelo do mundo, gerador, validador, passo a passo
 ├── procedural.rs      arte pixel-art (PNG) e áudio chiptune (WAV) procedurais, paleta por imagem
 ├── templates.rs       templates embutidos · update.rs auto-atualização
 frontend/              interface (HTML/CSS/JS, módulos ES, sem build)
 templates/             jogos-base de cada gênero (HTML/CSS/JS)
 ```
 
-Para publicar uma versão: `git tag v0.2.0 && git push origin v0.2.0` — o workflow `release.yml` compila para Linux (x86_64/arm64), macOS (Intel/Apple Silicon) e Windows, gera `.tar.gz`/`.zip` com `.sha256` e publica; é isso que `install.sh`, `install.ps1` e `gameflow update` consomem. Veja o [changelog](CHANGELOG.md).
+Para publicar uma versão: `git tag v0.3.0 && git push origin v0.3.0` (ou rode o workflow pela aba Actions informando a tag) — o workflow `release.yml` compila para Linux (x86_64/arm64), macOS (Intel/Apple Silicon) e Windows, gera `.tar.gz`/`.zip` com `.sha256` e publica; é isso que `install.sh`, `install.ps1` e `gameflow update` consomem. Veja o [changelog](CHANGELOG.md).
 
 ## Status e limitações honestas
 
-- Os geradores embutidos, os 8 templates, a interface, o pipeline de agentes (incluindo retrabalho e pedidos de assets) e a segurança têm testes automatizados e foram jogados no Chromium.
+- Os geradores embutidos, os 9 templates, a interface, o pipeline de agentes (incluindo retrabalho e pedidos de assets) e a segurança têm testes automatizados e foram jogados no Chromium.
 - Os caminhos com **modelos reais** (llama.cpp, stable-diffusion.cpp, Piper, Hugging Face) foram validados contra **servidores simulados com a mesma API** (o ambiente de desenvolvimento não tinha GPU nem acesso ao Hub). Se algo se comportar diferente com um modelo real, abra uma issue com a saída de `gameflow doctor`.
 - A qualidade do que a IA escreve depende do modelo. Modelos pequenos (≤3B) ajudam mais em texto e pequenos ajustes de código; para mecânicas elaboradas prefira modelos de código de 7B+.
 - A arte procedural (sem modelo de imagem) é sempre pixel-art colorida com a paleta do estilo; um estilo que não seja pixel art muda principalmente como o jogo escala os sprites e o que o modelo de imagem é instruído a desenhar.

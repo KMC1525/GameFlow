@@ -17,6 +17,13 @@ pub struct Plan {
 }
 
 pub fn plan(genre: Genre) -> Plan {
+    if genre == Genre::TextAdventure {
+        // DOM-based (no canvas, no mini-engine): it has its own shell and engine
+        return Plan {
+            files: vec![("ta/index.html", "index.html"), ("ta/style.css", "style.css"), ("ta/js/game.js", "js/game.js"), ("ta/js/custom.js", "js/custom.js")],
+            scripts: vec!["js/data.js", "js/game.js", "js/custom.js"],
+        };
+    }
     let mut files = vec![("common/index.html", "index.html"), ("common/style.css", "style.css"), ("common/js/gameflow.js", "js/gameflow.js"), ("common/js/custom.js", "js/custom.js")];
     let mut scripts = vec!["js/data.js", "js/gameflow.js"];
     let add = |src: &'static str, dst: &'static str, files: &mut Vec<(&'static str, &'static str)>, scripts: &mut Vec<&'static str>| {
@@ -45,6 +52,7 @@ pub fn plan(genre: Genre) -> Plan {
             add("tps/js/game.js", "js/game.js", &mut files, &mut scripts);
         }
         Genre::Arcade => add("arcade/js/game.js", "js/game.js", &mut files, &mut scripts),
+        Genre::TextAdventure => unreachable!("handled above"),
     }
     scripts.push("js/custom.js");
     Plan { files, scripts }

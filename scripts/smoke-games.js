@@ -23,6 +23,7 @@ const GENRES = {
   fps: { prompt: 'FPS em primeira pessoa', keys: ['KeyW', 'KeyD', 'KeyW'], hold: 500 },
   tps: { prompt: 'Tiro em terceira pessoa no espaço', keys: ['KeyW', 'KeyD'], hold: 600 },
   arcade: { prompt: 'Jogo de nave arcade', keys: ['KeyA', 'KeyD'], hold: 500 },
+  text_adventure: { prompt: 'Aventura de texto no deserto', ta: true },
 };
 
 let failures = 0;
@@ -61,6 +62,21 @@ const fail = (m) => { failures++; console.error('  ✗ ' + m); };
     page.on('pageerror', (e) => errs.push('pageerror: ' + e.message));
     page.on('console', (m) => { if (m.type() === 'error') errs.push('console: ' + m.text()); });
     await page.goto(`${info.play_base}/smoke-${g.replace(/_/g, '-')}/`);
+    if (c.ta) {
+      // aventura de texto: digita o passo a passo e confere a vitória (primeiro clicando em Começar)
+      await page.waitForSelector('#btnStart', { timeout: 15000 }).catch(() => errs.push('tela inicial não apareceu'));
+      await page.click('#btnStart');
+      const steps = await page.evaluate(() => GF.world.walkthrough);
+      for (const cmd of steps) { await page.fill('#input', cmd); await page.keyboard.press('Enter'); await page.waitForTimeout(40); }
+      const won = await page.evaluate(() => !!(GF.game && GF.game.won));
+      if (!won) errs.push('o passo a passo não venceu a aventura no navegador');
+      const shown = await page.locator('#terminal .win').count();
+      if (!shown) errs.push('mensagem de vitória não apareceu');
+      console.log(errs.length ? `✗ ${g}` : `✓ ${g}  (venceu em ${steps.length} comandos)`);
+      errs.forEach(fail);
+      await page.close();
+      continue;
+    }
     await page.waitForFunction(() => window.GF && GF.state === 'title', null, { timeout: 15000 }).catch(() => errs.push('o jogo não chegou à tela inicial'));
     await page.keyboard.press('Enter');
     await page.waitForTimeout(300);

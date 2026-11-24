@@ -48,5 +48,5 @@ jobs:
         run: |
           cd scripts && npm init -y >/dev/null && npm i playwright@1 >/dev/null
           npx playwright install --with-deps chromium
-      - name: Gerar e jogar os 8 gêneros
+      - name: Gerar e jogar os 9 gêneros
         run: GAMEFLOW_BIN=$PWD/target/debug/gameflow NODE_PATH=$PWD/scripts/node_modules node scripts/smoke-games.js
