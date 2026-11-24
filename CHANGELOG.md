@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.4.0
+
+### Changed
+- **New look, aligned with OpenFlow**: soft graphite grays (no pure black) with a neutral light accent instead of blue, flat panels separated by thin lines, rounded cards and modals, pill-shaped buttons, a rounded floating prompt box, softer chat bubbles, uppercase letter-spaced brand and OpenFlow-style scrollbars, focus rings and toasts.
+- The five themes keep their ids (your saved choice still applies) but use the new palettes; *Papel* is now shown as **Claro** and follows OpenFlow's light theme. The logo and favicon follow the accent color.
+- The Settings → Appearance text and the README describe the new look.
+
 ## 0.3.0
 
 ### Added

@@ -187,7 +187,7 @@ GameFlow starts and manages `llama-server` for you. Step-by-step guide in [`docs
 
 ### Appearance
 
-Soft, low-brightness grays with **desaturated blue** accents, designed for long sessions: **Grafite** (default), **Névoa**, **Ardósia**, **Crepúsculo** and **Papel** (light). The **interface scale** (70–180 %) and editor font size are adjustable; side panels are resizable.
+Soft, low-brightness graphite grays with a neutral accent — the same look as OpenFlow (rounded cards, pill buttons) — designed for long sessions: **Grafite** (default), **Névoa**, **Ardósia**, **Crepúsculo** and **Claro** (light). The **interface scale** (70–180 %) and editor font size are adjustable; side panels are resizable.
 
 ## What a generated project looks like
 
@@ -251,7 +251,7 @@ frontend/              the interface (HTML/CSS/JS, ES modules, no build step)
 templates/             base game for each genre (HTML/CSS/JS)
 ```
 
-To publish a release: `git tag v0.3.0 && git push origin v0.3.0` (or run the workflow from the Actions tab and type the tag) — the `release.yml` workflow builds for Linux (x86_64/arm64), macOS (Intel/Apple Silicon) and Windows, produces `.tar.gz`/`.zip` files with `.sha256`, and publishes them; that is what `install.sh`, `install.ps1` and `gameflow update` consume. See the [changelog](CHANGELOG.md).
+To publish a release: `git tag v0.4.0 && git push origin v0.4.0` (or run the workflow from the Actions tab and type the tag) — the `release.yml` workflow builds for Linux (x86_64/arm64), macOS (Intel/Apple Silicon) and Windows, produces `.tar.gz`/`.zip` files with `.sha256`, and publishes them; that is what `install.sh`, `install.ps1` and `gameflow update` consume. See the [changelog](CHANGELOG.md).
 
 ## Status and honest limitations
 
